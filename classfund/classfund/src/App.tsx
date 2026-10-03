@@ -13,6 +13,7 @@ import { ChatView } from './views/ChatView';
 import { BankQRView } from './views/BankQRView';
 import { DonateView } from './views/DonateView';
 import { PublicFundView } from './views/PublicFundView';
+import { GuestChatPage } from './pages/GuestChatPage';
 import { TransactionDetailModal } from './components/modals/TransactionDetailModal';
 import { ManualExpenseModal } from './components/modals/ManualExpenseModal';
 import { CreateCampaignModal } from './components/modals/CreateCampaignModal';
@@ -66,6 +67,7 @@ const MainContent: React.FC = () => {
     'upload',
     'campaign',
     'chat',
+    'guest-chat',
     'bank',
     'donate',
     'public',
@@ -82,24 +84,25 @@ const MainContent: React.FC = () => {
     prevTabRef.current = currentTab;
   }, [currentTab]);
 
-  return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 pb-28 lg:pb-16 overflow-hidden">
-      {/* Apple-style Synchronized Sliding View on every tab switch */}
-      <div 
-        key={currentTab} 
-        className={slideDirection === 'right' ? 'animate-slide-from-right' : 'animate-slide-from-left'}
-      >
-        {currentTab === 'dashboard' && <DashboardView />}
-        {currentTab === 'ledger' && <LedgerView />}
-        {currentTab === 'upload' && <UploadReceiptView />}
-        {currentTab === 'campaign' && <CampaignView />}
-        {currentTab === 'chat' && <ChatView />}
-        {currentTab === 'bank' && <BankQRView />}
-        {currentTab === 'donate' && <DonateView />}
-        {currentTab === 'public' && <PublicFundView />}
-      </div>
-    </main>
-  );
+return (
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 pb-28 lg:pb-16 overflow-hidden">
+        {/* Apple-style Synchronized Sliding View on every tab switch */}
+        <div 
+          key={currentTab} 
+          className={slideDirection === 'right' ? 'animate-slide-from-right' : 'animate-slide-from-left'}
+        >
+          {currentTab === 'dashboard' && <DashboardView />}
+          {currentTab === 'ledger' && <LedgerView />}
+          {currentTab === 'upload' && <UploadReceiptView />}
+          {currentTab === 'campaign' && <CampaignView />}
+          {currentTab === 'chat' && <ChatView />}
+          {currentTab === 'guest-chat' && <GuestChatPage />}
+          {currentTab === 'bank' && <BankQRView />}
+          {currentTab === 'donate' && <DonateView />}
+          {currentTab === 'public' && <PublicFundView />}
+        </div>
+      </main>
+    );
 };
 
 export default function App() {

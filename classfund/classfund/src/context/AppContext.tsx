@@ -70,6 +70,12 @@ interface AppContextType {
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
   
+  // Guest Chat State (Phase 4)
+  guestConversationId: string;
+  setGuestConversationId: (id: string) => void;
+  guestSenderName: string;
+  setGuestSenderName: (name: string) => void;
+  
   // Financial Actions
   addLedgerEntry: (entry: Omit<LedgerEntry, 'id' | 'created_at' | 'effective_at'>) => LedgerEntry;
   revertTransaction: (transactionId: string, reason: string) => boolean;
@@ -112,6 +118,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [isPerimeterGlowActive, setIsPerimeterGlowActive] = useState(false);
+
+  // Guest Chat State (Phase 4)
+  const [guestConversationId, setGuestConversationId] = useState<string>('classfund_main');
+  const [guestSenderName, setGuestSenderName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('guest_sender_name') || '';
+    } catch {
+      return '';
+    }
+  });
 
   const unlockSecretWallpaper = () => {
     setIsSecretWallpaperUnlocked(true);
@@ -298,6 +314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             time: timeStr,
           },
           created_at: timeStr,
+          status: 'posted' as const,
         },
         ...prev,
       ]);
@@ -408,6 +425,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         message_type: 'SYSTEM',
         content: `Đã thu hồi giao dịch ${original.transaction_code} (${formatVND(original.amount)}). Lý do: ${reason}`,
         created_at: timeStr,
+        status: 'posted' as const,
       },
       ...prev,
     ]);
@@ -458,6 +476,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       content: content.trim(),
       is_pinned: isPinned,
       created_at: timeStr,
+      status: 'posted' as const,
     };
 
     setChatMessages((prev) => [newMsg, ...prev]);
@@ -551,6 +570,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         addToast,
         removeToast,
+        // Guest Chat State (Phase 4)
+        guestConversationId,
+        setGuestConversationId,
+        guestSenderName,
+        setGuestSenderName,
         addLedgerEntry,
         revertTransaction,
         addManualExpense,
