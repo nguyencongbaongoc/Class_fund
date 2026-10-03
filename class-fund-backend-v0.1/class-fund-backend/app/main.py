@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, campaigns, chat, fund, health, uploads
+from app.api.routes import auth, campaigns, chat, fund, health, uploads, messages, vision
 from app.api.routes import ai_internal, public
 from app.core.config import get_settings
 from app.db.init_db import init_db
@@ -39,3 +39,5 @@ app.include_router(uploads.router, prefix=prefix)
 app.include_router(ai_internal.router, prefix=prefix)
 app.include_router(campaigns.router, prefix=prefix)
 app.include_router(chat.router, prefix=prefix)
+app.include_router(messages.router, prefix=prefix)
+app.include_router(vision.router, prefix=prefix)

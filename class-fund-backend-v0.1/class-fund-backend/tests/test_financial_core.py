@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.models.models import Account, BankAccount, ExtractedTransaction, LedgerStatus, Transaction, Upload, UploadStatus, User
-from app.services.ledger import calculate_balance, post_revert, post_transaction, verify_and_post_from_ai
+from app.services.ledger import calculate_balance, post_revert, post_transaction, verify_and_post_from_ai, ProcessingResult
 from app.models.models import LedgerSource, LedgerType, Role
 from app.core.security import hash_password
 
@@ -27,14 +27,17 @@ def test_credit_debit_and_balance():
     bank = BankAccount(bank_name="Test", account_name="Fund", account_number="123")
     db.add_all([account, bank]); db.commit()
 
-    post_transaction(db, account=account, type_=LedgerType.CREDIT, amount=Decimal("50000"), currency="VND",
+    result1 = post_transaction(db, account=account, type_=LedgerType.CREDIT, amount=Decimal("50000"), currency="VND",
                      source=LedgerSource.MANUAL, transaction_code="M1", bank_account_id=bank.id,
                      upload_id=None, created_by=None, effective_at=datetime.now(timezone.utc), note=None,
                      idempotency_key="credit-1")
-    post_transaction(db, account=account, type_=LedgerType.DEBIT, amount=Decimal("25000"), currency="VND",
+    assert result1.status == ProcessingResult.SUCCESS
+    
+    result2 = post_transaction(db, account=account, type_=LedgerType.DEBIT, amount=Decimal("25000"), currency="VND",
                      source=LedgerSource.MANUAL, transaction_code="D1", bank_account_id=bank.id,
                      upload_id=None, created_by=None, effective_at=datetime.now(timezone.utc), note=None,
                      idempotency_key="debit-1")
+    assert result2.status == ProcessingResult.SUCCESS
     assert calculate_balance(db, account) == Decimal("125000")
 
 
@@ -43,12 +46,16 @@ def test_revert_restores_balance_without_deleting_original():
     account = Account(name="Fund", currency="VND", opening_balance=Decimal("0"), active=True)
     user = User(name="Owner", email="owner@example.com", password_hash=hash_password("pw"), role=Role.OWNER_TREASURER)
     db.add_all([account, user]); db.commit()
-    tx = post_transaction(db, account=account, type_=LedgerType.CREDIT, amount=Decimal("50000"), currency="VND",
+    tx_result = post_transaction(db, account=account, type_=LedgerType.CREDIT, amount=Decimal("50000"), currency="VND",
                           source=LedgerSource.MANUAL, transaction_code=None, bank_account_id=None,
                           upload_id=None, created_by=user.id, effective_at=datetime.now(timezone.utc), note=None,
                           idempotency_key="credit-1")
+    assert tx_result.status == ProcessingResult.SUCCESS
+    tx = tx_result.transaction
     assert calculate_balance(db, account) == Decimal("50000")
-    rev = post_revert(db, original=tx, actor_id=user.id, reason="wrong payment", idempotency_key="rev-1")
+    rev_result = post_revert(db, original=tx, actor_id=user.id, reason="wrong payment", idempotency_key="rev-1")
+    assert rev_result.status == ProcessingResult.SUCCESS
+    rev = rev_result.transaction
     assert rev.type == LedgerType.REVERT
     assert calculate_balance(db, account) == Decimal("0")
     assert db.get(Transaction, tx.id).status == LedgerStatus.REVERTED
@@ -65,8 +72,9 @@ def test_ai_low_confidence_does_not_post():
                                       sender_name="NGUYEN A", bank_name="Test", bank_account_id=bank.id,
                                       confidence=Decimal("0.5"), status=UploadStatus.PROCESSING)
     db.add(extraction); db.commit()
-    tx = verify_and_post_from_ai(db, upload, extraction, account=account, actor_id=None, idempotency_key="ai-1")
-    assert tx is None
+    result = verify_and_post_from_ai(db, upload, extraction, account=account, actor_id=None, idempotency_key="ai-1")
+    assert result.status == ProcessingResult.NEEDS_HUMAN_REVIEW
+    assert result.transaction is None
     assert upload.status == UploadStatus.NEEDS_REVIEW
     assert db.query(Transaction).count() == 0
 
@@ -83,8 +91,10 @@ def test_ai_retry_same_upload_does_not_double_post():
     db.add(extraction); db.commit()
     first = verify_and_post_from_ai(db, upload, extraction, account=account, actor_id=None, idempotency_key="ai-1")
     second = verify_and_post_from_ai(db, upload, extraction, account=account, actor_id=None, idempotency_key="ai-2")
-    assert first is not None
-    assert second is not None
-    assert first.id == second.id
+    assert first.status in (ProcessingResult.SUCCESS, ProcessingResult.DUPLICATE)
+    assert second.status in (ProcessingResult.SUCCESS, ProcessingResult.DUPLICATE)
+    assert first.transaction is not None
+    assert second.transaction is not None
+    assert first.transaction.id == second.transaction.id
     assert db.query(Transaction).count() == 1
     assert calculate_balance(db, account) == Decimal("50000")

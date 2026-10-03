@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -176,6 +176,7 @@ class Transaction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message_id: Mapped[str | None] = mapped_column(ForeignKey("messages.id"), nullable=True, index=True)
     __table_args__ = (
         UniqueConstraint("bank_account_id", "transaction_code", name="uq_bank_transaction_code"),
     )
@@ -231,6 +232,73 @@ class PaymentMatch(Base):
     confidence: Mapped[Decimal] = mapped_column(Numeric(5, 4))
     matched_by: Mapped[str] = mapped_column(String(32), default="AI")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MessageStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    AWAITING_REVIEW = "awaiting_review"
+    POSTED = "posted"
+    REJECTED = "rejected"
+    FAILED = "failed"
+    RECALLED = "recalled"
+
+
+class Message(Base):
+    __tablename__ = "messages"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid4_str)
+    conversation_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    sender_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    sender_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    sender_photo: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    sender_role: Mapped[str] = mapped_column(String(40), nullable=False, default="PUBLIC")
+    message_type: Mapped[str] = mapped_column(String(50), nullable=False, default="TEXT")
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    attachment_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default=MessageStatus.PENDING.value)
+    public_code: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True, index=True)
+    recall_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    transaction_id: Mapped[str | None] = mapped_column(ForeignKey("transactions.id"), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    worker_id: Mapped[str | None] = mapped_column(ForeignKey("worker_status.worker_id"), nullable=True)
+
+    __table_args__ = (
+        Index("ix_messages_status_created", "status", "created_at", postgresql_where=text("status = 'pending'")),
+        Index("ix_messages_conversation_status_created", "conversation_id", "status", "created_at"),
+        Index("ix_messages_processing_lease", "status", "lease_expires_at", postgresql_where=text("status = 'processing'")),
+        Index("ix_messages_worker_id", "worker_id"),
+    )
+
+
+class WorkerStatus(Base):
+    __tablename__ = "worker_status"
+    worker_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid4_str)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="offline")
+    model_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_job_id: Mapped[str | None] = mapped_column(ForeignKey("messages.id"), nullable=True)
+    worker_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class RecallToken(Base):
+    __tablename__ = "recall_tokens"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid4_str)
+    message_id: Mapped[str] = mapped_column(ForeignKey("messages.id"), unique=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_recall_tokens_message_id", "message_id"),
+    )
 
 
 class ChatMessage(Base):

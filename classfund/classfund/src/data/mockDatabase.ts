@@ -298,6 +298,7 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
     content: 'Thông báo: Hạn đóng quỹ tháng 10 là ngày 30/09/2026. Các bạn vui lòng quét mã VietQR ở góc trên hoặc chuyển khoản kèm nội dung cú pháp, sau đó chụp ảnh màn hình tải lên đây để hệ thống AI tự động ghi nhận nhé!',
     is_pinned: true,
     created_at: '2026-09-22 08:00',
+    status: 'posted' as const,
   },
   {
     id: 'msg_02',
@@ -317,6 +318,7 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
       time: '24/09 09:15',
     },
     created_at: '2026-09-24 09:16',
+    status: 'posted' as const,
   },
   {
     id: 'msg_03',
@@ -326,6 +328,7 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
     message_type: 'TEXT',
     content: 'Cảm ơn An nha, hệ thống AI đã khớp mã giao dịch VCB8921734 và tự động cập nhật trạng thái "Đã nộp" trên danh sách lớp rồi nhé!',
     created_at: '2026-09-24 09:18',
+    status: 'posted' as const,
   },
   {
     id: 'msg_04',
@@ -345,6 +348,7 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
       time: '24/09 11:30',
     },
     created_at: '2026-09-24 11:31',
+    status: 'posted' as const,
   },
   {
     id: 'msg_05',
@@ -355,6 +359,7 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
     content: 'Hiện tại đã có 22/35 bạn hoàn thành đợt thu tháng 10. Còn 13 bạn chưa nộp tranh thủ trước hạn 30/09 nha, nếu có trục trặc chuyển khoản nhắn liền cho mình hoặc Trang!',
     is_pinned: false,
     created_at: '2026-09-25 18:00',
+    status: 'posted' as const,
   }
 ];
 

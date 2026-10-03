@@ -1,5 +1,17 @@
 export type UserRole = 'TREASURER' | 'MODERATOR' | 'MEMBER' | 'PUBLIC';
 
+// Phase 4: Message status types (matching backend)
+export type MessageStatus = 
+  | 'pending'
+  | 'processing'
+  | 'awaiting_review'
+  | 'posted'
+  | 'rejected'
+  | 'failed'
+  | 'recalled';
+
+export type MessageType = 'TEXT' | 'RECEIPT' | 'IMAGE' | 'ANNOUNCEMENT' | 'SYSTEM';
+
 export interface User {
   id: string;
   name: string;
@@ -67,8 +79,13 @@ export interface ChatMessage {
   sender_id: string;
   sender_name: string;
   sender_role: UserRole;
-  message_type: 'TEXT' | 'RECEIPT' | 'ANNOUNCEMENT' | 'SYSTEM';
+  message_type: MessageType;
   content: string;
+  attachment_id?: string;
+  status: MessageStatus;
+  public_code?: string;
+  transaction_id?: string;
+  error_message?: string;
   receipt_data?: {
     entry_id: string;
     amount: number;
@@ -81,6 +98,10 @@ export interface ChatMessage {
   };
   is_pinned?: boolean;
   created_at: string;
+  // Frontend-only fields
+  recall_token?: string;
+  is_optimistic?: boolean;
+  upload_progress?: number;
 }
 
 export interface BankAccountInfo {
@@ -110,6 +131,7 @@ export type ViewTab =
   | 'upload' 
   | 'campaign' 
   | 'chat' 
+  | 'guest-chat'
   | 'bank' 
   | 'donate' 
   | 'public';
