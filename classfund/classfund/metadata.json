@@ -1,0 +1,6 @@
+{
+  "name": "ClassFund - Quỹ Lớp Liquid Glass",
+  "description": "Hệ thống quản lý quỹ lớp hiện đại với giao diện Liquid Glass chuẩn mực cao cấp, quản lý thu chi, đợt thu, sao kê minh bạch và nhận diện biên lai chuyển khoản.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

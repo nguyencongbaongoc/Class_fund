@@ -1,0 +1,1 @@
+Thật ra tính làm liquid glass rồi mà lười quá nên dùng tạm kính mờ vậy, thật ra kính mờ cũng đẹp mà!

@@ -1,0 +1,1 @@
+Nếu có thấy mấy cái ko hay này mong ae đừng giận t!!!

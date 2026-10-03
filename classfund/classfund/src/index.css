@@ -1,0 +1,326 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+  }
+
+  .font-mono, .font-tabular {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  body {
+    background-color: #030712;
+    color: #f8fafc;
+    overflow-x: hidden;
+    letter-spacing: -0.011em;
+  }
+}
+
+/* ==========================================================================
+   Apple Ultra-Refined Frosted Glass Hierarchy
+   ========================================================================== */
+
+/* 1. Kính mờ 20% Không Viền (20% Opacity Pure Borderless Glass) */
+.apple-frosted-20-borderless {
+  background: rgba(15, 23, 42, 0.20) !important;
+  backdrop-filter: blur(36px) saturate(210%);
+  -webkit-backdrop-filter: blur(36px) saturate(210%);
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: 
+    0 25px 60px -10px rgba(0, 0, 0, 0.55),
+    0 0 35px -5px rgba(255, 255, 255, 0.05);
+}
+
+/* 2. Borderless Pure Frosted Glass (Kính mờ không viền siêu mượt) */
+.apple-frosted-borderless {
+  background: rgba(15, 23, 42, 0.20) !important;
+  backdrop-filter: blur(40px) saturate(220%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: 
+    0 28px 65px -10px rgba(0, 0, 0, 0.65),
+    0 0 40px -5px rgba(255, 255, 255, 0.06);
+}
+
+/* 3. Standard Frosted Glass Cards (~25% Opacity) */
+.apple-frosted-glass {
+  background: rgba(15, 23, 42, 0.25);
+  backdrop-filter: blur(28px) saturate(200%) brightness(105%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(105%);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  border-top-color: rgba(255, 255, 255, 0.42);
+  box-shadow: 
+    0 20px 45px -12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.28);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-frosted-glass:hover {
+  background: rgba(15, 23, 42, 0.32);
+  border-color: rgba(255, 255, 255, 0.30);
+  border-top-color: rgba(255, 255, 255, 0.52);
+}
+
+/* 4. Elevated Frosted Glass Cards & Heroes (~35% Opacity) */
+.apple-card-elevated {
+  background: linear-gradient(
+    180deg,
+    rgba(30, 41, 59, 0.38) 0%,
+    rgba(15, 23, 42, 0.32) 100%
+  );
+  backdrop-filter: blur(32px) saturate(210%) brightness(108%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(108%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-top-color: rgba(255, 255, 255, 0.52);
+  box-shadow: 
+    0 28px 55px -15px rgba(0, 0, 0, 0.55),
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.35);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 5. High-Contrast Modal & Context Menu Windows (~45% Opacity) */
+.apple-card-modal {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(40px) saturate(220%) brightness(110%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(110%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-top-color: rgba(255, 255, 255, 0.58);
+  box-shadow: 
+    0 32px 64px -16px rgba(0, 0, 0, 0.72),
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.38);
+}
+
+/* 6. Translucent Frosted Dark Nav Pill (~28% Opacity) */
+.apple-nav-pill {
+  background: rgba(20, 20, 28, 0.28);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top-color: rgba(255, 255, 255, 0.44);
+  box-shadow: 
+    0 16px 36px -10px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+/* Interactive Apple Button */
+.apple-btn-primary {
+  background: #0071e3;
+  color: #ffffff;
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-btn-primary:hover {
+  background: #0077ed;
+  box-shadow: 0 8px 24px -4px rgba(0, 113, 227, 0.55);
+  transform: scale(1.015);
+}
+
+.apple-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.apple-btn-secondary {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  backdrop-filter: blur(14px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+
+.apple-btn-secondary:active {
+  transform: scale(0.98);
+}
+
+/* ==========================================================================
+   Toast Sky Drop & Sky Jump Exit Animations
+   "lúc thông báo biến mất thì animation là thông báo nhảy lên trời nha"
+   ========================================================================== */
+@keyframes toast-sky-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-260px) scale(0.82);
+    filter: blur(8px);
+  }
+  64% {
+    opacity: 1;
+    transform: translateY(12px) scale(1.02);
+    filter: blur(0px);
+  }
+  84% {
+    transform: translateY(-3px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.animate-toast-sky-drop {
+  animation: toast-sky-drop 0.52s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes toast-sky-jump-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+    filter: blur(0px);
+  }
+  16% {
+    /* Crouch / compression impulse before soaring into the clouds */
+    transform: translateY(14px) scale(1.04, 0.95);
+    opacity: 1;
+  }
+  100% {
+    /* Rocket jump high into the sky */
+    opacity: 0;
+    transform: translateY(-440px) scale(0.62, 1.25);
+    filter: blur(14px);
+  }
+}
+
+.animate-toast-sky-jump-exit {
+  animation: toast-sky-jump-exit 0.44s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+  will-change: transform, opacity, filter;
+}
+
+/* ==========================================================================
+   Synchronized Content Sliding Animations (Khi thanh trượt ở trên chạy thì nội dung dưới trượt theo)
+   ========================================================================== */
+@keyframes slide-in-from-right {
+  0% {
+    opacity: 0;
+    transform: translateX(45px);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0px);
+    filter: blur(0px);
+  }
+}
+
+@keyframes slide-in-from-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-45px);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0px);
+    filter: blur(0px);
+  }
+}
+
+.animate-slide-from-right {
+  animation: slide-in-from-right 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+.animate-slide-from-left {
+  animation: slide-in-from-left 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+/* ==========================================================================
+   Smooth Fade & Scale Animation
+   ========================================================================== */
+@keyframes apple-fade-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
+.animate-apple-fade-scale {
+  animation: apple-fade-scale-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+/* Apple Typography Gradients */
+.apple-text-headline {
+  background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.92) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.apple-text-titanium {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 50%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Moderator Highlighting in Apple Style with 30% Glass */
+.apple-mod-card {
+  background: linear-gradient(
+    180deg,
+    rgba(245, 158, 11, 0.22) 0%,
+    rgba(15, 23, 42, 0.32) 100%
+  );
+  backdrop-filter: blur(32px);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  border-top-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 
+    0 20px 45px -12px rgba(245, 158, 11, 0.25),
+    inset 0 1px 1.5px 0 rgba(251, 191, 36, 0.45);
+}
+
+/* Sleek Inset Apple Scrollbar */
+.apple-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.apple-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px;
+}
+
+.apple-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+}
+
+.apple-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.48);
+}
