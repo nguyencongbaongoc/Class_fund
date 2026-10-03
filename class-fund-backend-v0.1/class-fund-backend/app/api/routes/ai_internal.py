@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_ai_service
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models.models import Account, ExtractedTransaction, Transaction, Upload, UploadStatus
+from app.models.models import Account, ExtractedTransaction, Transaction, Upload, UploadStatus, Message
 from app.schemas.schemas import AIResultIn
-from app.services.ledger import verify_and_post_from_ai
+from app.services.ledger import verify_and_post_from_ai, VerifyAndPostResult, ProcessingResult
 
 router = APIRouter(prefix="/internal/ai", tags=["ai-internal"], dependencies=[Depends(require_ai_service)])
 
@@ -23,7 +23,7 @@ def get_upload_file(upload_id: str, db: Session = Depends(get_db)):
 
 @router.post("/uploads/{upload_id}/result")
 def receive_ai_result(upload_id: str, body: AIResultIn, idempotency_key: str = Header(..., alias="Idempotency-Key"),
-                     db: Session = Depends(get_db)):
+                      db: Session = Depends(get_db)):
     upload = db.get(Upload, upload_id)
     if not upload:
         raise HTTPException(404, "Upload not found")
@@ -31,6 +31,11 @@ def receive_ai_result(upload_id: str, body: AIResultIn, idempotency_key: str = H
     if existing_tx:
         return {"upload_id": upload.id, "status": upload.status.value, "transaction_id": existing_tx.id, "posted": True}
 
+    # Check if this upload is linked to a message (for idempotency)
+    message = None
+    if upload.id:
+        message = db.execute(select(Message).where(Message.attachment_id == upload.id)).scalar_one_or_none()
+    
     upload.status = UploadStatus.PROCESSING
     extraction = db.execute(select(ExtractedTransaction).where(ExtractedTransaction.upload_id == upload.id)).scalar_one_or_none()
     data = body.model_dump()
@@ -49,5 +54,25 @@ def receive_ai_result(upload_id: str, body: AIResultIn, idempotency_key: str = H
     if not account:
         raise HTTPException(500, "No active fund account configured")
 
-    tx = verify_and_post_from_ai(db, upload, extraction, account=account, actor_id=None, idempotency_key=idempotency_key)
-    return {"upload_id": upload.id, "status": upload.status.value, "transaction_id": tx.id if tx else None, "posted": tx is not None}
+    message_id = message.id if message else None
+    logical_operation_id = f"msg_{message_id}" if message_id else None
+    attempt_id = f"attempt_{message.retry_count + 1}" if message else "attempt_1"
+    
+    result = verify_and_post_from_ai(
+        db, upload, extraction, account=account, actor_id=None, 
+        idempotency_key=idempotency_key, 
+        message_id=message_id, 
+        logical_operation_id=logical_operation_id, 
+        attempt_id=attempt_id
+    )
+    
+    response = {
+        "upload_id": upload.id, 
+        "status": upload.status.value, 
+        "transaction_id": result.transaction.id if result.transaction else None, 
+        "posted": result.status in (ProcessingResult.SUCCESS, ProcessingResult.DUPLICATE),
+        "processing_status": result.status.value,
+    }
+    if result.error_message:
+        response["error"] = result.error_message
+    return response
