@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.models import (
-    Message, MessageStatus, RecallToken, Transaction, Upload, UploadStatus
+    Message, MessageStatus, RecallToken, Transaction, Upload, UploadStatus, ExtractedTransaction
 )
-from app.schemas.schemas import UploadOut
+from app.schemas.schemas import UploadOut, ExtractionData
 from app.services.ledger import post_revert, ProcessingResult
 
 
@@ -25,9 +25,10 @@ class MessageCreate(BaseModel):
     conversation_id: str = Field(..., min_length=1)
     sender_name: str = Field(..., min_length=1, max_length=120)
     sender_photo: Optional[str] = Field(None, max_length=500)
-    message_type: str = Field(default="TEXT", pattern="^(TEXT|RECEIPT|IMAGE)$")
+    message_type: str = Field(default="TEXT", pattern="^(TEXT|RECEIPT|IMAGE|ANNOUNCEMENT|SYSTEM)$")
     content: str = Field(..., min_length=1)
     attachment_id: Optional[str] = None
+    attachment_ids: Optional[list[str]] = Field(default=None, max_length=5)
 
 
 class MessageCreateResponse(BaseModel):
@@ -41,6 +42,21 @@ class MessageCreateResponse(BaseModel):
 class RecallRequest(BaseModel):
     recall_token: str = Field(..., min_length=64, max_length=64)
     reason: str = Field(default="User recalled", min_length=1, max_length=500)
+
+
+class RecallEligibilityResponse(BaseModel):
+    eligible: bool
+    message_id: str
+    status: str
+    reason: Optional[str] = None
+    can_recall_before_post: bool = False
+    can_recall_after_post: bool = False
+    has_token: bool = False
+    token_expired: bool = False
+    token_used: bool = False
+    token_revoked: bool = False
+    already_recalled: bool = False
+    transaction_posted: bool = False
 
 
 class RecallResponse(BaseModel):
@@ -63,6 +79,8 @@ class MessageStatusResponse(BaseModel):
     error_message: Optional[str]
     created_at: datetime
     processed_at: Optional[datetime]
+    attachment_ids: Optional[list[str]] = None
+    extraction: Optional[ExtractionData] = None
 
 
 def generate_public_code() -> str:
@@ -88,13 +106,14 @@ def create_message(
     db: Session = Depends(get_db)
 ):
     """Create a new guest message with recall token."""
-    # Verify upload exists if attachment provided
-    if body.attachment_id:
-        upload = db.get(Upload, body.attachment_id)
+    # Verify uploads exist if attachments provided
+    attachment_ids = body.attachment_ids or ([body.attachment_id] if body.attachment_id else [])
+    for attachment_id in attachment_ids:
+        upload = db.get(Upload, attachment_id)
         if not upload:
-            raise HTTPException(404, "Upload not found")
+            raise HTTPException(404, f"Upload {attachment_id} not found")
         if upload.status not in (UploadStatus.PENDING, UploadStatus.PROCESSING):
-            raise HTTPException(409, "Upload already processed")
+            raise HTTPException(409, f"Upload {attachment_id} already processed")
     
     # Generate recall token
     recall_token, token_hash = generate_recall_token()
@@ -105,7 +124,8 @@ def create_message(
     while db.execute(select(Message).where(Message.public_code == public_code)).scalar_one_or_none():
         public_code = generate_public_code()
     
-    # Create message
+    # Create message - store first attachment_id for backward compatibility
+    first_attachment_id = attachment_ids[0] if attachment_ids else None
     message = Message(
         conversation_id=body.conversation_id,
         sender_id=None,  # Guest
@@ -114,7 +134,8 @@ def create_message(
         sender_role="PUBLIC",
         message_type=body.message_type,
         content=body.content.strip(),
-        attachment_id=body.attachment_id,
+        attachment_id=first_attachment_id,
+        attachment_ids=attachment_ids if attachment_ids else None,
         status=MessageStatus.PENDING.value,
         public_code=public_code,
         recall_token_hash=token_hash,
@@ -210,6 +231,88 @@ def recall_message(
     )
 
 
+@router.get("/{message_id}/recall-eligibility", response_model=RecallEligibilityResponse)
+def check_recall_eligibility(
+    message_id: str,
+    db: Session = Depends(get_db)
+):
+    """Check if a message is eligible for recall without consuming the token.
+    This endpoint provides server-authoritative eligibility information.
+    """
+    message = db.get(Message, message_id)
+    if not message:
+        raise HTTPException(404, "Message not found")
+    
+    # Check recall token existence
+    recall_token = db.execute(
+        select(RecallToken).where(RecallToken.message_id == message_id)
+    ).scalar_one_or_none()
+    
+    has_token = recall_token is not None
+    token_expired = False
+    token_used = False
+    token_revoked = False
+    
+    if recall_token:
+        token_expired = recall_token.expires_at and recall_token.expires_at < datetime.now(timezone.utc)
+        token_used = recall_token.used_at is not None
+        token_revoked = recall_token.revoked_at is not None
+    
+    already_recalled = message.status == MessageStatus.RECALLED.value
+    transaction_posted = message.transaction_id is not None and message.status == MessageStatus.POSTED.value
+    
+    # Determine eligibility
+    eligible = True
+    reasons = []
+    
+    if not has_token:
+        eligible = False
+        reasons.append("No recall token found")
+    
+    if token_expired:
+        eligible = False
+        reasons.append("Recall token expired")
+    
+    if token_used:
+        eligible = False
+        reasons.append("Recall token already used")
+    
+    if token_revoked:
+        eligible = False
+        reasons.append("Recall token revoked")
+    
+    if already_recalled:
+        eligible = False
+        reasons.append("Message already recalled")
+    
+    can_recall_before_post = (
+        eligible and 
+        message.status in [MessageStatus.PENDING.value, MessageStatus.PROCESSING.value, MessageStatus.AWAITING_REVIEW.value]
+    )
+    
+    can_recall_after_post = (
+        eligible and 
+        transaction_posted
+    )
+    
+    reason = "; ".join(reasons) if reasons else "Eligible for recall"
+    
+    return RecallEligibilityResponse(
+        eligible=eligible,
+        message_id=message.id,
+        status=message.status,
+        reason=reason,
+        can_recall_before_post=can_recall_before_post,
+        can_recall_after_post=can_recall_after_post,
+        has_token=has_token,
+        token_expired=token_expired,
+        token_used=token_used,
+        token_revoked=token_revoked,
+        already_recalled=already_recalled,
+        transaction_posted=transaction_posted,
+    )
+
+
 @router.get("/{message_id}", response_model=MessageStatusResponse)
 def get_message_status(
     message_id: str,
@@ -219,6 +322,43 @@ def get_message_status(
     message = db.get(Message, message_id)
     if not message:
         raise HTTPException(404, "Message not found")
+    
+    # Get extraction data if exists
+    extraction = None
+    if message.attachment_ids:
+        for attachment_id in message.attachment_ids:
+            ext = db.execute(
+                select(ExtractedTransaction).where(ExtractedTransaction.upload_id == attachment_id)
+            ).scalar_one_or_none()
+            if ext:
+                extraction = ExtractionData(
+                    transaction_code=ext.transaction_code,
+                    amount=int(ext.amount) if ext.amount else None,
+                    sender_name=ext.sender_name,
+                    bank_name=ext.bank_name,
+                    transaction_time=ext.transaction_time.isoformat() if ext.transaction_time else None,
+                    confidence=float(ext.confidence) if ext.confidence else None,
+                    raw_ocr=ext.raw_ocr,
+                    status=ext.status.value if ext.status else None,
+                    field_confidences=ext.field_confidences,
+                )
+                break
+    elif message.attachment_id:
+        ext = db.execute(
+            select(ExtractedTransaction).where(ExtractedTransaction.upload_id == message.attachment_id)
+        ).scalar_one_or_none()
+        if ext:
+            extraction = ExtractionData(
+                transaction_code=ext.transaction_code,
+                amount=int(ext.amount) if ext.amount else None,
+                sender_name=ext.sender_name,
+                bank_name=ext.bank_name,
+                transaction_time=ext.transaction_time.isoformat() if ext.transaction_time else None,
+                confidence=float(ext.confidence) if ext.confidence else None,
+                raw_ocr=ext.raw_ocr,
+                status=ext.status.value if ext.status else None,
+                field_confidences=ext.field_confidences,
+            )
     
     return MessageStatusResponse(
         message_id=message.id,
@@ -233,6 +373,8 @@ def get_message_status(
         error_message=message.error_message,
         created_at=message.created_at,
         processed_at=message.processed_at,
+        attachment_ids=message.attachment_ids,
+        extraction=extraction,
     )
 
 
@@ -252,20 +394,46 @@ def list_messages(
     
     messages = db.execute(query).scalars().all()
     
-    return [
-        MessageStatusResponse(
-            message_id=m.id,
-            conversation_id=m.conversation_id,
-            sender_name=m.sender_name,
-            sender_role=m.sender_role,
-            message_type=m.message_type,
-            content=m.content,
-            status=m.status,
-            public_code=m.public_code,
-            transaction_id=m.transaction_id,
-            error_message=m.error_message,
-            created_at=m.created_at,
-            processed_at=m.processed_at,
+    result = []
+    for m in messages:
+        # Get extraction data if exists
+        extraction = None
+        attachment_ids = m.attachment_ids or ([m.attachment_id] if m.attachment_id else [])
+        for attachment_id in attachment_ids:
+            ext = db.execute(
+                select(ExtractedTransaction).where(ExtractedTransaction.upload_id == attachment_id)
+            ).scalar_one_or_none()
+            if ext:
+                extraction = ExtractionData(
+                    transaction_code=ext.transaction_code,
+                    amount=int(ext.amount) if ext.amount else None,
+                    sender_name=ext.sender_name,
+                    bank_name=ext.bank_name,
+                    transaction_time=ext.transaction_time.isoformat() if ext.transaction_time else None,
+                    confidence=float(ext.confidence) if ext.confidence else None,
+                    raw_ocr=ext.raw_ocr,
+                    status=ext.status.value if ext.status else None,
+                    field_confidences=ext.field_confidences,
+                )
+                break
+        
+        result.append(
+            MessageStatusResponse(
+                message_id=m.id,
+                conversation_id=m.conversation_id,
+                sender_name=m.sender_name,
+                sender_role=m.sender_role,
+                message_type=m.message_type,
+                content=m.content,
+                status=m.status,
+                public_code=m.public_code,
+                transaction_id=m.transaction_id,
+                error_message=m.error_message,
+                created_at=m.created_at,
+                processed_at=m.processed_at,
+                attachment_ids=m.attachment_ids,
+                extraction=extraction,
+            )
         )
-        for m in messages
-    ]
+    
+    return result

@@ -10,6 +10,7 @@ import { TransactionStatus } from '../../types';
 import { StatusBadge } from './StatusBadge';
 import { PublicCodeDisplay, InlinePublicCode } from './PublicCodeDisplay';
 import { RecallButton } from './RecallButton';
+import { ExtractionResultDisplay } from './ExtractionResultDisplay';
 
 interface MessageItemProps {
   message: Message;
@@ -158,6 +159,16 @@ const MessageItem = memo(function MessageItem({
             isRecalling={isRecalling}
           />
         )}
+        
+        {/* Extraction result display for AI-processed receipts */}
+        {message.extraction_result ? (
+          <ExtractionResultDisplay
+            extraction={message.extraction_result}
+            fieldConfidences={message.extraction_result.field_confidences}
+            messageStatus={displayStatus}
+            isOwn={isOwn}
+          />
+        ) : null}
       </div>
     );
   };

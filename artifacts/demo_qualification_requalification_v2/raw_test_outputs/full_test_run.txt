@@ -1,0 +1,172 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\class-fund-backend-v0.1\class-fund-backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0, mock-3.15.1, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 136 items
+
+tests/simulation/test_e2e.py::TestScenarioANormalFinancialWorkflow::test_normal_financial_workflow PASSED [  0%]
+tests/simulation/test_e2e.py::TestScenarioBHumanRejectsProposal::test_human_rejects_proposal PASSED [  1%]
+tests/simulation/test_e2e.py::TestScenarioCDuplicateReceipt::test_duplicate_receipt PASSED [  2%]
+tests/simulation/test_e2e.py::TestScenarioDRecallBeforePosting::test_recall_before_posting PASSED [  2%]
+tests/simulation/test_e2e.py::TestScenarioERecallAfterPosting::test_recall_after_posting_creates_reversal PASSED [  3%]
+tests/simulation/test_e2e.py::TestScenarioFExternalServiceFailure::test_storage_unavailable PASSED [  4%]
+tests/simulation/test_e2e.py::TestScenarioFExternalServiceFailure::test_ollama_unavailable PASSED [  5%]
+tests/simulation/test_e2e.py::TestScenarioFExternalServiceFailure::test_database_timeout SKIPPED [  5%]
+tests/simulation/test_e2e.py::TestScenarioFExternalServiceFailure::test_realtime_disconnected PASSED [  6%]
+tests/simulation/test_e2e.py::TestScenarioFExternalServiceFailure::test_worker_crash PASSED [  7%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_admin_dashboard_view PASSED [  8%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_admin_ledger_view PASSED [  8%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_ai_review_queue_view PASSED [  9%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_audit_log_view PASSED [ 10%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_system_monitoring_view PASSED [ 11%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_role_restrictions PASSED [ 11%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_csv_exports_preserve_filters PASSED [ 12%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_audit_history_readonly PASSED [ 13%]
+tests/simulation/test_e2e.py::TestScenarioGAdminDashboard::test_user_management_unimplemented PASSED [ 13%]
+tests/simulation/test_ollama.py::TestOllamaVisionSimulation::test_vision_success_receipt PASSED [ 14%]
+tests/simulation/test_ollama.py::TestOllamaVisionSimulation::test_vision_success_with_custom_values PASSED [ 15%]
+tests/simulation/test_ollama.py::TestOllamaVisionSimulation::test_vision_low_confidence PASSED [ 16%]
+tests/simulation/test_ollama.py::TestOllamaVisionSimulation::test_vision_missing_fields PASSED [ 16%]
+tests/simulation/test_ollama.py::TestOllamaVisionSimulation::test_vision_multiple_transactions PASSED [ 17%]
+tests/simulation/test_ollama.py::TestOllamaVisionSimulation::test_vision_vietnamese_text PASSED [ 18%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_timeout PASSED [ 19%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_connection_refused PASSED [ 19%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_invalid_json PASSED [ 20%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_model_unavailable PASSED [ 21%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_empty_response PASSED [ 22%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_malformed_extraction PASSED [ 22%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_server_unavailable PASSED [ 23%]
+tests/simulation/test_ollama.py::TestOllamaVisionFailures::test_vision_circuit_breaker_open PASSED [ 24%]
+tests/simulation/test_ollama.py::TestOllamaTextFallback::test_text_fallback_success PASSED [ 25%]
+tests/simulation/test_ollama.py::TestOllamaTextFallback::test_text_fallback_invalid_schema PASSED [ 25%]
+tests/simulation/test_ollama.py::TestOllamaTextFallback::test_text_fallback_low_confidence PASSED [ 26%]
+tests/simulation/test_ollama.py::TestOllamaTextFallback::test_text_fallback_vision_unavailable PASSED [ 27%]
+tests/simulation/test_ollama.py::TestOllamaTextFallback::test_both_vision_and_text_fail PASSED [ 27%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_amount_extraction PASSED [ 28%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_currency_handling PASSED [ 29%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_transaction_date_extraction PASSED [ 30%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_sender_extraction PASSED [ 30%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_recipient_bank_extraction PASSED [ 31%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_confidence_scoring PASSED [ 32%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_source_metadata PASSED [ 33%]
+tests/simulation/test_ollama.py::TestExtractionCorrectness::test_duplicate_indicators PASSED [ 33%]
+tests/simulation/test_ollama.py::TestOllamaConfiguration::test_vision_model_configuration PASSED [ 34%]
+tests/simulation/test_ollama.py::TestOllamaConfiguration::test_text_model_configuration PASSED [ 35%]
+tests/simulation/test_ollama.py::TestOllamaConfiguration::test_ollama_endpoint PASSED [ 36%]
+tests/simulation/test_ollama.py::TestOllamaConfiguration::test_model_availability_check PASSED [ 36%]
+tests/simulation/test_ollama.py::TestAIGatekeeperIntegration::test_ai_extraction_never_posts_directly PASSED [ 37%]
+tests/simulation/test_ollama.py::TestAIGatekeeperIntegration::test_verify_and_post_from_ai_signature PASSED [ 38%]
+tests/simulation/test_ollama.py::TestAIGatekeeperIntegration::test_confidence_threshold_enforcement PASSED [ 38%]
+tests/simulation/test_ollama.py::TestAIGatekeeperIntegration::test_required_fields_validation PASSED [ 39%]
+tests/simulation/test_supabase_auth.py::TestSupabaseAuthSimulation::test_successful_login_owner PASSED [ 40%]
+tests/simulation/test_supabase_auth.py::TestSupabaseAuthSimulation::test_successful_login_moderator PASSED [ 41%]
+tests/simulation/test_supabase_auth.py::TestSupabaseAuthSimulation::test_successful_login_member PASSED [ 41%]
+tests/simulation/test_supabase_auth.py::TestSupabaseAuthSimulation::test_successful_login_public PASSED [ 42%]
+tests/simulation/test_supabase_auth.py::TestSupabaseAuthSimulation::test_invalid_token_rejected PASSED [ 43%]
+tests/simulation/test_supabase_auth.py::TestSupabaseAuthSimulation::test_expired_token_rejected PASSED [ 44%]
+tests/simulation/test_supabase_auth.py::TestSupabaseAuthSimulation::test_malformed_token_rejected PASSED [ 44%]
+tests/simulation/test_supabase_auth.py::TestRoleAuthorization::test_admin_routes_require_owner_or_moderator PASSED [ 45%]
+tests/simulation/test_supabase_auth.py::TestRoleAuthorization::test_review_routes_require_owner_or_moderator SKIPPED [ 46%]
+tests/simulation/test_supabase_auth.py::TestRoleAuthorization::test_member_routes_accessible_to_member PASSED [ 47%]
+tests/simulation/test_supabase_auth.py::TestRoleAuthorization::test_public_routes_accessible_to_all PASSED [ 47%]
+tests/simulation/test_supabase_auth.py::TestRoleAuthorization::test_unknown_role_fails_closed PASSED [ 48%]
+tests/simulation/test_supabase_auth.py::TestFrontendRoleNormalization::test_role_values_match_backend_enums PASSED [ 49%]
+tests/simulation/test_supabase_auth.py::TestFrontendRoleNormalization::test_no_frontend_only_bypass PASSED [ 50%]
+tests/simulation/test_supabase_auth.py::TestAdminRouteProtection::test_admin_endpoints_require_authorization[/api/v1/admin/stats] PASSED [ 50%]
+tests/simulation/test_supabase_auth.py::TestAdminRouteProtection::test_admin_endpoints_require_authorization[/api/v1/admin/audit-logs] PASSED [ 51%]
+tests/simulation/test_supabase_auth.py::TestAdminRouteProtection::test_admin_endpoints_require_authorization[/api/v1/admin/audit-logs/export] PASSED [ 52%]
+tests/simulation/test_supabase_auth.py::TestAdminRouteProtection::test_admin_endpoints_require_authorization[/api/v1/admin/workers] PASSED [ 52%]
+tests/simulation/test_supabase_auth.py::TestAdminRouteProtection::test_admin_endpoints_require_authorization[/api/v1/admin/health] PASSED [ 53%]
+tests/simulation/test_supabase_auth.py::TestAdminRouteProtection::test_admin_endpoints_require_authorization[/api/v1/admin/queue-status] PASSED [ 54%]
+tests/simulation/test_supabase_auth.py::TestMissingTokenHandling::test_missing_token_rejected PASSED [ 55%]
+tests/simulation/test_supabase_auth.py::TestMissingTokenHandling::test_empty_token_rejected PASSED [ 55%]
+tests/simulation/test_supabase_auth.py::TestMissingTokenHandling::test_missing_auth_header_rejected PASSED [ 56%]
+tests/simulation/test_worker.py::TestWorkerLifecycle::test_worker_startup PASSED [ 57%]
+tests/simulation/test_worker.py::TestWorkerLifecycle::test_worker_shutdown PASSED [ 58%]
+tests/simulation/test_worker.py::TestWorkerLifecycle::test_worker_reclaim_stale_leases PASSED [ 58%]
+tests/simulation/test_worker.py::TestWorkerLifecycle::test_worker_heartbeat PASSED [ 59%]
+tests/simulation/test_worker.py::TestMessageClaiming::test_claim_next_message PASSED [ 60%]
+tests/simulation/test_worker.py::TestMessageClaiming::test_claim_no_pending_messages PASSED [ 61%]
+tests/simulation/test_worker.py::TestMessageClaiming::test_claim_skip_locked PASSED [ 61%]
+tests/simulation/test_worker.py::TestMessageClaiming::test_lease_expiry_reclamation PASSED [ 62%]
+tests/simulation/test_worker.py::TestMessageProcessing::test_process_message_success PASSED [ 63%]
+tests/simulation/test_worker.py::TestMessageProcessing::test_process_message_needs_review PASSED [ 63%]
+tests/simulation/test_worker.py::TestMessageProcessing::test_process_recalled_message PASSED [ 64%]
+tests/simulation/test_worker.py::TestMessageProcessing::test_process_message_no_upload PASSED [ 65%]
+tests/simulation/test_worker.py::TestMessageProcessing::test_process_message_no_extraction PASSED [ 66%]
+tests/simulation/test_worker.py::TestRetryLogic::test_fail_message_backoff_schedule PASSED [ 66%]
+tests/simulation/test_worker.py::TestRetryLogic::test_fail_message_max_retries PASSED [ 67%]
+tests/simulation/test_worker.py::TestRetryLogic::test_fail_message_bounded_retries PASSED [ 68%]
+tests/simulation/test_worker.py::TestCrashRecovery::test_worker_crash_during_processing PASSED [ 69%]
+tests/simulation/test_worker.py::TestCrashRecovery::test_recovery_after_crash PASSED [ 69%]
+tests/simulation/test_worker.py::TestCrashRecovery::test_crash_after_external_call PASSED [ 70%]
+tests/simulation/test_worker.py::TestIdempotentProcessing::test_duplicate_task_delivery PASSED [ 71%]
+tests/simulation/test_worker.py::TestIdempotentProcessing::test_concurrent_workers_same_task PASSED [ 72%]
+tests/simulation/test_worker.py::TestIdempotentProcessing::test_atomic_claim_behavior PASSED [ 72%]
+tests/simulation/test_worker.py::TestWorkerQueueSimulation::test_simulate_worker_lifecycle PASSED [ 73%]
+tests/simulation/test_worker.py::TestWorkerQueueSimulation::test_worker_crash_recovery_scenario PASSED [ 74%]
+tests/simulation/test_worker.py::TestWorkerQueueSimulation::test_lease_expiry_during_processing PASSED [ 75%]
+tests/simulation/test_worker.py::TestWorkerStatusTransitions::test_status_transitions PASSED [ 75%]
+tests/simulation/test_worker.py::TestWorkerStatusTransitions::test_degraded_state PASSED [ 76%]
+tests/simulation/test_worker.py::TestWorkerStatusTransitions::test_recovering_state PASSED [ 77%]
+tests/test_admin.py::test_admin_stats_aggregation PASSED                 [ 77%]
+tests/test_admin.py::test_audit_log_pagination_and_filters PASSED        [ 78%]
+tests/test_admin.py::test_worker_health_computation PASSED               [ 79%]
+tests/test_admin.py::test_queue_status_metrics PASSED                    [ 80%]
+tests/test_admin.py::test_system_health_all_healthy SKIPPED (Known m...) [ 80%]
+tests/test_admin.py::test_system_health_not_configured PASSED            [ 81%]
+tests/test_admin.py::test_system_health_all_not_configured PASSED        [ 82%]
+tests/test_admin.py::test_system_health_database_down PASSED             [ 83%]
+tests/test_admin.py::test_worker_health_no_workers PASSED                [ 83%]
+tests/test_admin.py::test_system_health_worker_pool_not_configured SKIPPED [ 84%]
+tests/test_admin.py::test_system_health_overall_not_configured_logic PASSED [ 85%]
+tests/test_financial_core.py::test_credit_debit_and_balance PASSED       [ 86%]
+tests/test_financial_core.py::test_revert_restores_balance_without_deleting_original PASSED [ 86%]
+tests/test_financial_core.py::test_ai_low_confidence_does_not_post PASSED [ 87%]
+tests/test_financial_core.py::test_ai_retry_same_upload_does_not_double_post PASSED [ 88%]
+tests/test_idempotency.py::test_idempotent_same_key_same_payload PASSED  [ 88%]
+tests/test_idempotency.py::test_idempotent_different_retry_count_same_payload PASSED [ 89%]
+tests/test_idempotency.py::test_idempotent_same_message_modified_amount_rejected PASSED [ 90%]
+tests/test_idempotency.py::test_different_message_same_bank_transaction PASSED [ 91%]
+tests/test_idempotency.py::test_concurrent_requests_no_double_post PASSED [ 91%]
+tests/test_idempotency.py::test_ambiguous_commit_recovery PASSED         [ 92%]
+tests/test_idempotency.py::test_worker_crash_after_commit_recovery PASSED [ 93%]
+tests/test_idempotency.py::test_verify_and_post_from_ai_idempotent PASSED [ 94%]
+tests/test_recall.py::test_recall_token_generation_and_validation PASSED [ 94%]
+tests/test_recall.py::test_recall_before_post PASSED                     [ 95%]
+tests/test_recall.py::test_recall_after_post_creates_reversal PASSED     [ 96%]
+tests/test_recall.py::test_double_recall_prevented PASSED                [ 97%]
+tests/test_recall.py::test_recall_token_replay_protection PASSED         [ 97%]
+tests/test_recall.py::test_public_message_id_cannot_authorize_recall PASSED [ 98%]
+tests/test_recall.py::test_public_transaction_id_cannot_authorize_recall PASSED [ 99%]
+tests/test_recall.py::test_worker_checks_recall_before_posting PASSED    [100%]
+
+============================== warnings summary ===============================
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+tests/simulation/test_e2e.py: 42 warnings
+tests/simulation/test_worker.py: 138 warnings
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py:1192: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes
+    cursor.execute(statement, parameters)
+
+tests/simulation/test_e2e.py: 9 warnings
+tests/simulation/test_supabase_auth.py: 15 warnings
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\jwt\api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 23 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/simulation/test_e2e.py: 8 warnings
+tests/simulation/test_supabase_auth.py: 12 warnings
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\jwt\api_jwt.py:368: InsecureKeyLengthWarning: The HMAC key is 23 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+tests/test_recall.py::test_worker_checks_recall_before_posting
+  C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\class-fund-backend-v0.1\class-fund-backend\tests\conftest.py:62: SAWarning: Can't sort tables for DROP; an unresolvable foreign key dependency exists between tables: messages, transactions, worker_status; and backend does not support ALTER.  To restore at least a partial sort, apply use_alter=True to ForeignKey and ForeignKeyConstraint objects involved in the cycle to mark these as known cycles that will be ignored.
+    Base.metadata.drop_all(engine)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================ 132 passed, 4 skipped, 226 warnings in 12.34s ================

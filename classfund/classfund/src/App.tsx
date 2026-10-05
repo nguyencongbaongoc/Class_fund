@@ -14,6 +14,12 @@ import { BankQRView } from './views/BankQRView';
 import { DonateView } from './views/DonateView';
 import { PublicFundView } from './views/PublicFundView';
 import { GuestChatPage } from './pages/GuestChatPage';
+// Admin Views
+import { AdminDashboardView } from './views/AdminDashboardView';
+import { AIReviewQueueView } from './views/AIReviewQueueView';
+import { AdminLedgerView } from './views/AdminLedgerView';
+import { AuditLogView } from './views/AuditLogView';
+import { SystemMonitoringView } from './views/SystemMonitoringView';
 import { TransactionDetailModal } from './components/modals/TransactionDetailModal';
 import { ManualExpenseModal } from './components/modals/ManualExpenseModal';
 import { CreateCampaignModal } from './components/modals/CreateCampaignModal';
@@ -71,6 +77,12 @@ const MainContent: React.FC = () => {
     'bank',
     'donate',
     'public',
+    'admin-dashboard',
+    'admin-review',
+    'admin-ledger',
+    'admin-audit',
+    'admin-system',
+    'admin-users',
   ];
 
   useEffect(() => {
@@ -100,6 +112,12 @@ return (
           {currentTab === 'bank' && <BankQRView />}
           {currentTab === 'donate' && <DonateView />}
           {currentTab === 'public' && <PublicFundView />}
+          {currentTab === 'admin-dashboard' && <AdminDashboardView />}
+          {currentTab === 'admin-review' && <AIReviewQueueView />}
+          {currentTab === 'admin-ledger' && <AdminLedgerView />}
+          {currentTab === 'admin-audit' && <AuditLogView />}
+          {currentTab === 'admin-system' && <SystemMonitoringView />}
+          {currentTab === 'admin-users' && <div className="p-8 text-center text-neutral-400">User Management - Coming Soon</div>}
         </div>
       </main>
     );

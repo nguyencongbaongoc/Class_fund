@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { 
   User, 
   UserRole, 
@@ -29,10 +29,56 @@ interface ToastMessage {
   description?: string;
 }
 
+// Backend canonical roles (authoritative)
+export type BackendRole = 'OWNER_TREASURER' | 'MODERATOR' | 'MEMBER' | 'PUBLIC';
+
+// Frontend display roles (UI compatible)
+export type FrontendRole = 'TREASURER' | 'MODERATOR' | 'MEMBER' | 'PUBLIC';
+
+/**
+ * Normalizes backend canonical role to frontend display role.
+ * Backend is authoritative; this is a one-way mapping for UI display only.
+ */
+export function normalizeRole(backendRole: BackendRole): FrontendRole {
+  switch (backendRole) {
+    case 'OWNER_TREASURER':
+      return 'TREASURER';
+    case 'MODERATOR':
+      return 'MODERATOR';
+    case 'MEMBER':
+      return 'MEMBER';
+    case 'PUBLIC':
+      return 'PUBLIC';
+    default:
+      // Fail closed - unknown roles get minimal access
+      return 'PUBLIC';
+  }
+}
+
+/**
+ * Validates that a role string is a known backend role.
+ * Returns the canonical backend role or null if invalid.
+ */
+export function validateBackendRole(role: string): BackendRole | null {
+  const validRoles: BackendRole[] = ['OWNER_TREASURER', 'MODERATOR', 'MEMBER', 'PUBLIC'];
+  return validRoles.includes(role as BackendRole) ? role as BackendRole : null;
+}
+
+interface ToastMessage {
+  id: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  title: string;
+  description?: string;
+}
+
 interface AppContextType {
   currentUser: User;
   setCurrentUser: (user: User) => void;
-  switchRole: (role: UserRole) => void;
+  currentBackendRole: BackendRole;
+  setCurrentBackendRole: (role: BackendRole) => void;
+  currentUserFrontendRole: FrontendRole;
+  setCurrentUserFrontendRole: (role: FrontendRole) => void;
+  switchRole: (role: FrontendRole) => void;
   currentTab: ViewTab;
   setCurrentTab: (tab: ViewTab) => void;
   ledgerEntries: LedgerEntry[];
@@ -89,6 +135,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS.treasurer);
+  const [currentBackendRole, setCurrentBackendRoleState] = useState<BackendRole>('OWNER_TREASURER');
+  const [currentUserFrontendRole, setCurrentUserFrontendRoleState] = useState<FrontendRole>('TREASURER');
   const [currentTab, setCurrentTab] = useState<ViewTab>('dashboard');
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(INITIAL_LEDGER_ENTRIES);
   const [studentsRoster, setStudentsRoster] = useState<StudentRosterItem[]>(INITIAL_STUDENTS_ROSTER);
@@ -213,17 +261,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const switchRole = (role: UserRole) => {
-    if (role === 'TREASURER') setCurrentUser(MOCK_USERS.treasurer);
-    else if (role === 'MODERATOR') setCurrentUser(MOCK_USERS.moderator);
-    else if (role === 'MEMBER') setCurrentUser(MOCK_USERS.member);
-    else setCurrentUser(MOCK_USERS.public);
+  const setCurrentBackendRole = (role: BackendRole) => {
+    const validRole = validateBackendRole(role);
+    if (!validRole) {
+      addToast({
+        type: 'error',
+        title: 'Invalid role',
+        description: `Unknown backend role: ${role}`
+      });
+      return;
+    }
+    setCurrentBackendRoleState(validRole);
+    const frontendRole = normalizeRole(validRole);
+    setCurrentUserFrontendRoleState(frontendRole);
+    
+    // Update mock user for demo purposes
+    switch (validRole) {
+      case 'OWNER_TREASURER':
+        setCurrentUser(MOCK_USERS.treasurer);
+        break;
+      case 'MODERATOR':
+        setCurrentUser(MOCK_USERS.moderator);
+        break;
+      case 'MEMBER':
+        setCurrentUser(MOCK_USERS.member);
+        break;
+      case 'PUBLIC':
+        setCurrentUser(MOCK_USERS.public);
+        break;
+    }
+  };
 
-    addToast({
-      type: 'info',
-      title: `Đã đổi vai trò sang: ${role}`,
-      description: role === 'PUBLIC' ? 'Chế độ khách xem quỹ công khai' : `Đăng nhập dưới quyền ${role}`
-    });
+  const setCurrentUserFrontendRoleDirect = (role: FrontendRole) => {
+    setCurrentUserFrontendRoleState(role);
+  };
+
+  const switchRole = (frontendRole: FrontendRole) => {
+    // Map frontend role to backend role for demo
+    const backendRoleMap: Record<FrontendRole, BackendRole> = {
+      'TREASURER': 'OWNER_TREASURER',
+      'MODERATOR': 'MODERATOR',
+      'MEMBER': 'MEMBER',
+      'PUBLIC': 'PUBLIC',
+    };
+    const backendRole = backendRoleMap[frontendRole];
+    setCurrentBackendRole(backendRole);
   };
 
   // Strictly calculate balances from ledger
@@ -533,6 +615,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentUser,
         setCurrentUser,
+        currentBackendRole,
+        setCurrentBackendRole: setCurrentBackendRoleState,
+        currentUserFrontendRole,
+        setCurrentUserFrontendRole: setCurrentUserFrontendRoleState,
         switchRole,
         currentTab,
         setCurrentTab,

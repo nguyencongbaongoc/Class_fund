@@ -1,0 +1,25 @@
+FAILED tests\simulation\test_worker.py::TestMessageClaiming::test_claim_no_pending_messages
+FAILED tests\simulation\test_worker.py::TestMessageClaiming::test_claim_skip_locked
+FAILED tests\simulation\test_worker.py::TestMessageClaiming::test_lease_expiry_reclamation
+FAILED tests\simulation\test_worker.py::TestMessageProcessing::test_process_message_success
+FAILED tests\simulation\test_worker.py::TestMessageProcessing::test_process_message_needs_review
+FAILED tests\simulation\test_worker.py::TestMessageProcessing::test_process_recalled_message
+FAILED tests\simulation\test_worker.py::TestMessageProcessing::test_process_message_no_upload
+FAILED tests\simulation\test_worker.py::TestMessageProcessing::test_process_message_no_extraction
+FAILED tests\simulation\test_worker.py::TestRetryLogic::test_fail_message_backoff_schedule
+FAILED tests\simulation\test_worker.py::TestRetryLogic::test_fail_message_max_retries
+FAILED tests\simulation\test_worker.py::TestRetryLogic::test_fail_message_bounded_retries
+FAILED tests\simulation\test_worker.py::TestCrashRecovery::test_worker_crash_during_processing
+FAILED tests\simulation\test_worker.py::TestCrashRecovery::test_recovery_after_crash
+FAILED tests\simulation\test_worker.py::TestCrashRecovery::test_crash_after_external_call
+FAILED tests\simulation\test_worker.py::TestIdempotentProcessing::test_duplicate_task_delivery
+FAILED tests\simulation\test_worker.py::TestIdempotentProcessing::test_concurrent_workers_same_task
+FAILED tests\simulation\test_worker.py::TestIdempotentProcessing::test_atomic_claim_behavior
+FAILED tests\simulation\test_worker.py::TestWorkerQueueSimulation::test_simulate_worker_lifecycle
+FAILED tests\simulation\test_worker.py::TestWorkerQueueSimulation::test_worker_crash_recovery_scenario
+FAILED tests\simulation\test_worker.py::TestWorkerQueueSimulation::test_lease_expiry_during_processing
+FAILED tests\simulation\test_worker.py::TestWorkerStatusTransitions::test_status_transitions
+FAILED tests\simulation\test_worker.py::TestWorkerStatusTransitions::test_recovering_state
+FAILED tests\test_admin.py::test_worker_health_computation - AttributeError: ...
+FAILED tests\test_admin.py::test_system_health_not_configured - StopIteration
+75 failed, 120 passed, 4 skipped, 51 warnings in 48.02s

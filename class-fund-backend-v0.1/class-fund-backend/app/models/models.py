@@ -5,8 +5,9 @@ from decimal import Decimal
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.mysql import DATETIME, VARCHAR, JSON as MYSQL_JSON
 
-from app.db.base import Base
+from app.db.base import Base, MySQLDateTime, MySQLJSON
 
 
 def utcnow() -> datetime:
@@ -66,8 +67,8 @@ class RevokedToken(Base):
     __tablename__ = "revoked_tokens"
     jti: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    revoked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(MySQLDateTime)
+    revoked_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
 
 
 class User(Base):
@@ -77,7 +78,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[Role] = mapped_column(Enum(Role, native_enum=False), default=Role.MEMBER)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
 
 
 class Account(Base):
@@ -87,7 +88,7 @@ class Account(Base):
     currency: Mapped[str] = mapped_column(String(8), default="VND")
     opening_balance: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=Decimal("0"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
 
 
 class BankAccount(Base):
@@ -110,7 +111,7 @@ class Upload(Base):
     storage_path: Mapped[str] = mapped_column(String(500))
     uploaded_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     uploader_name: Mapped[str] = mapped_column(String(120))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
     status: Mapped[UploadStatus] = mapped_column(Enum(UploadStatus, native_enum=False), default=UploadStatus.PENDING, index=True)
 
 
@@ -118,7 +119,7 @@ class Student(Base):
     __tablename__ = "students"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid4_str)
     full_name: Mapped[str] = mapped_column(String(160), index=True)
-    aliases: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    aliases: Mapped[list | None] = mapped_column(MySQLJSON, nullable=True)
     student_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -129,8 +130,8 @@ class CollectionCampaign(Base):
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     expected_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
-    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    start_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
     status: Mapped[CampaignStatus] = mapped_column(Enum(CampaignStatus, native_enum=False), default=CampaignStatus.DRAFT)
 
 
@@ -152,12 +153,22 @@ class ExtractedTransaction(Base):
     sender_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     bank_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     bank_account_id: Mapped[str | None] = mapped_column(ForeignKey("bank_accounts.id"), nullable=True)
-    transaction_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    transaction_time: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
     confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     raw_ocr: Mapped[str | None] = mapped_column(Text, nullable=True)
     campaign_id: Mapped[str | None] = mapped_column(ForeignKey("collection_campaigns.id"), nullable=True)
     student_id: Mapped[str | None] = mapped_column(ForeignKey("students.id"), nullable=True)
     status: Mapped[UploadStatus] = mapped_column(Enum(UploadStatus, native_enum=False), default=UploadStatus.PROCESSING)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
+    # AI Pipeline fields
+    field_confidences: Mapped[dict | None] = mapped_column(MySQLJSON, nullable=True)
+    extraction_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    source_image_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # Review audit fields
+    reviewed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Transaction(Base):
@@ -173,8 +184,8 @@ class Transaction(Base):
     status: Mapped[LedgerStatus] = mapped_column(Enum(LedgerStatus, native_enum=False), default=LedgerStatus.VERIFIED)
     upload_id: Mapped[str | None] = mapped_column(ForeignKey("uploads.id"), nullable=True)
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
+    effective_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     message_id: Mapped[str | None] = mapped_column(ForeignKey("messages.id"), nullable=True, index=True)
     __table_args__ = (
@@ -194,10 +205,14 @@ class LedgerEntry(Base):
     status: Mapped[LedgerStatus] = mapped_column(Enum(LedgerStatus, native_enum=False))
     upload_id: Mapped[str | None] = mapped_column(ForeignKey("uploads.id"), nullable=True)
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
+    effective_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
     original_entry_id: Mapped[str | None] = mapped_column(ForeignKey("ledger_entries.id"), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    __table_args__ = (
+        # Double-reversal prevention enforced by the database, not only by app logic.
+        UniqueConstraint("original_entry_id", name="uq_ledger_original_entry"),
+    )
 
 
 class IdempotencyKey(Base):
@@ -206,8 +221,8 @@ class IdempotencyKey(Base):
     key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     request_fingerprint: Mapped[str] = mapped_column(String(64))
     response_status: Mapped[int] = mapped_column(Integer)
-    response_body: Mapped[dict] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    response_body: Mapped[dict] = mapped_column(MySQLJSON)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
 
 
 class AuditLog(Base):
@@ -217,10 +232,10 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(120))
     entity_type: Mapped[str] = mapped_column(String(120))
     entity_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    before_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    after_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    before_data: Mapped[dict | None] = mapped_column(MySQLJSON, nullable=True)
+    after_data: Mapped[dict | None] = mapped_column(MySQLJSON, nullable=True)
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
 
 
 class PaymentMatch(Base):
@@ -231,7 +246,7 @@ class PaymentMatch(Base):
     student_id: Mapped[str] = mapped_column(ForeignKey("students.id"))
     confidence: Mapped[Decimal] = mapped_column(Numeric(5, 4))
     matched_by: Mapped[str] = mapped_column(String(32), default="AI")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
 
 
 class MessageStatus(str, enum.Enum):
@@ -255,22 +270,23 @@ class Message(Base):
     message_type: Mapped[str] = mapped_column(String(50), nullable=False, default="TEXT")
     content: Mapped[str] = mapped_column(Text, nullable=False)
     attachment_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    attachment_ids: Mapped[list | None] = mapped_column(MySQLJSON, nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default=MessageStatus.PENDING.value)
     public_code: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True, index=True)
     recall_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    transaction_id: Mapped[str | None] = mapped_column(ForeignKey("transactions.id"), nullable=True)
+    transaction_id: Mapped[str | None] = mapped_column(ForeignKey("transactions.id", use_alter=True, name="fk_messages_transaction_id"), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
+    claimed_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
     worker_id: Mapped[str | None] = mapped_column(ForeignKey("worker_status.worker_id"), nullable=True)
 
     __table_args__ = (
-        Index("ix_messages_status_created", "status", "created_at", postgresql_where=text("status = 'pending'")),
+        Index("ix_messages_status_created", "status", "created_at"),
         Index("ix_messages_conversation_status_created", "conversation_id", "status", "created_at"),
-        Index("ix_messages_processing_lease", "status", "lease_expires_at", postgresql_where=text("status = 'processing'")),
+        Index("ix_messages_processing_lease", "status", "lease_expires_at"),
         Index("ix_messages_worker_id", "worker_id"),
     )
 
@@ -280,10 +296,10 @@ class WorkerStatus(Base):
     worker_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid4_str)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="offline")
     model_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    current_job_id: Mapped[str | None] = mapped_column(ForeignKey("messages.id"), nullable=True)
-    worker_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    last_heartbeat: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    last_processed_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    current_job_id: Mapped[str | None] = mapped_column(ForeignKey("messages.id", use_alter=True, name="fk_worker_status_current_job_id"), nullable=True)
+    worker_metadata: Mapped[dict] = mapped_column("metadata", MySQLJSON, default=dict)
 
 
 class RecallToken(Base):
@@ -291,10 +307,10 @@ class RecallToken(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid4_str)
     message_id: Mapped[str] = mapped_column(ForeignKey("messages.id"), unique=True, nullable=False)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    used_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(MySQLDateTime, nullable=True)
 
     __table_args__ = (
         Index("ix_recall_tokens_message_id", "message_id"),
@@ -310,4 +326,4 @@ class ChatMessage(Base):
     content: Mapped[str] = mapped_column(Text)
     attachment_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     ledger_entry_id: Mapped[str | None] = mapped_column(ForeignKey("ledger_entries.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(MySQLDateTime, default=utcnow)

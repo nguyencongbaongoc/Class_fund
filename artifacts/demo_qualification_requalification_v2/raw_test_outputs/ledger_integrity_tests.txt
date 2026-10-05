@@ -1,0 +1,39 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\class-fund-backend-v0.1\class-fund-backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0, mock-3.15.1, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 14 items
+
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_original_ledger_entries_immutable PASSED [  7%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_every_valid_posting_creates_one_authoritative_effect PASSED [ 14%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_ai_proposals_cannot_bypass_gatekeeper PASSED [ 21%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_posted_transaction_has_expected_amount_direction PASSED [ 28%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_reversal_references_correct_original PASSED [ 35%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_reversal_cannot_occur_twice PASSED [ 42%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_recall_before_posting_prevents_posting PASSED [ 50%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_recall_after_posting_creates_revert PASSED [ 57%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_failed_transaction_no_partial_ledger_effect PASSED [ 64%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_duplicate_messages_no_duplicate_entries PASSED [ 71%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_concurrent_posts_no_multiple_effects PASSED [ 78%]
+tests/simulation/test_ledger_integrity.py::TestLedgerInvariants::test_balance_calculations_from_authoritative_ledger PASSED [ 85%]
+tests/simulation/test_ledger_integrity.py::TestDoubleEntryContract::test_accounting_model_is_single_signed_ledger PASSED [ 92%]
+tests/simulation/test_ledger_integrity.py::TestDoubleEntryContract::test_revert_sign_convention PASSED [100%]
+
+============================== warnings summary ===============================
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+tests/simulation/test_ledger_integrity.py: 60 warnings
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py:1192: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes
+    cursor.execute(statement, parameters)
+
+tests/simulation/test_ledger_integrity.py::TestDoubleEntryContract::test_revert_sign_convention
+  C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\class-fund-backend-v0.1\class-fund-backend\tests\conftest.py:62: SAWarning: Can't sort tables for DROP; an unresolvable foreign key dependency exists between tables: messages, transactions, worker_status; and backend does not support ALTER.  To restore at least a partial sort, apply use_alter=True to ForeignKey and ForeignKeyConstraint objects involved in the cycle to mark these as known cycles that will be ignored.
+    Base.metadata.drop_all(engine)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 14 passed, 62 warnings in 1.65s =======================

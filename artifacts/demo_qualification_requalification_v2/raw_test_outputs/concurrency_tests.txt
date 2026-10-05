@@ -1,0 +1,37 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\class-fund-backend-v0.1\class-fund-backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0, mock-3.15.1, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 12 items
+
+tests/simulation/test_concurrency.py::test_concurrent_posting_2_clients PASSED [  8%]
+tests/simulation/test_concurrency.py::test_concurrent_posting_5_clients PASSED [ 16%]
+tests/simulation/test_concurrency.py::test_concurrent_posting_10_clients PASSED [ 25%]
+tests/simulation/test_concurrency.py::test_concurrent_posting_20_clients PASSED [ 33%]
+tests/simulation/test_concurrency.py::test_concurrent_queue_claiming PASSED [ 41%]
+tests/simulation/test_concurrency.py::test_concurrent_approval PASSED    [ 50%]
+tests/simulation/test_concurrency.py::test_concurrent_recall PASSED      [ 58%]
+tests/simulation/test_concurrency.py::test_concurrent_reversal PASSED    [ 66%]
+tests/simulation/test_concurrency.py::test_concurrent_balance_reads_writes PASSED [ 75%]
+tests/simulation/test_concurrency.py::test_concurrent_duplicate_delivery PASSED [ 83%]
+tests/simulation/test_concurrency.py::test_concurrent_idempotent_same_key_diff_payload PASSED [ 91%]
+tests/simulation/test_concurrency.py::test_stress_simulation PASSED      [100%]
+
+============================== warnings summary ===============================
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+tests/simulation/test_concurrency.py: 15 warnings
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py:1192: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes
+    cursor.execute(statement, parameters)
+
+tests/simulation/test_concurrency.py::test_stress_simulation
+  C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\class-fund-backend-v0.1\class-fund-backend\tests\conftest.py:62: SAWarning: Can't sort tables for DROP; an unresolvable foreign key dependency exists between tables: messages, transactions, worker_status; and backend does not support ALTER.  To restore at least a partial sort, apply use_alter=True to ForeignKey and ForeignKeyConstraint objects involved in the cycle to mark these as known cycles that will be ignored.
+    Base.metadata.drop_all(engine)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 12 passed, 17 warnings in 2.13s =======================

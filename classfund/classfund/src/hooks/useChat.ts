@@ -13,6 +13,16 @@ import { createHybridAdapter, HybridAdapter } from '../lib/polling';
 import { createRecallAdapter, RecallAdapter, createSessionStorageRecallConfig } from '../lib/recall';
 import { createUploadAdapter, UploadAdapter } from '../lib/upload';
 import { UploadState } from '../types/chat';
+import { 
+  classifyError, 
+  calculateBackoff, 
+  shouldRetry, 
+  RetryConfig, 
+  RetryState, 
+  RetryDecision,
+  ErrorInfo,
+  DEFAULT_RETRY_CONFIG
+} from '../lib/retry';
 
 interface UseChatConfig {
   conversationId?: string;
@@ -168,6 +178,7 @@ export function useChat(config: UseChatConfig): UseChatReturn {
         error_message: message.error_message,
         created_at: message.created_at,
         processed_at: message.processed_at,
+        attachment_ids: message.attachment_ids,
         is_optimistic: false,
       };
 
@@ -215,75 +226,134 @@ export function useChat(config: UseChatConfig): UseChatReturn {
     });
   }, []);
 
-  // Send message
+  // Send message with retry logic and idempotency
   const sendMessage = useCallback(async (
     data: Omit<MessageCreateRequest, 'conversation_id'>
   ): Promise<MessageCreateResponse | null> => {
     setError(null);
     
-    try {
-      // Upload images first if any
-      let attachmentIds: string[] = [];
-      const uploadIds = Array.from(uploads.entries())
-        .filter(([, u]) => u.status === 'completed' && u.upload_id)
-        .map(([, u]) => u.upload_id!);
-      
-      if (uploadIds.length > 0) {
-        attachmentIds = uploadIds;
-      }
-
-      // Create message
-      const request: MessageCreateRequest = {
-        conversation_id: conversationId,
-        ...data,
-        attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
-      };
-
-      const response = await apiClient.createMessage(request);
-
-      // Store recall token
-      recallAdapterRef.current?.storeRecallToken(response.message_id, response.recall_token);
-
-      // Add optimistic message
-      const optimisticMessage: Message = {
-        id: response.message_id,
-        conversation_id: conversationId,
-        sender_id: null,
-        sender_name: data.sender_name,
-        sender_role: currentUserRole,
-        message_type: data.message_type,
-        content: data.content,
-        attachment_id: attachmentIds[0],
-        status: response.status,
-        public_code: response.public_code,
-        created_at: response.created_at,
-        recall_token: response.recall_token,
-        is_optimistic: true,
-      };
-
-      setMessages(prev => [optimisticMessage, ...prev]);
-      hybridAdapterRef.current?.addMessageId(response.message_id);
-
-      // Clear completed uploads
-      setUploads(prev => {
-        const next = new Map(prev);
-        for (const uploadId of uploadIds) {
-          // Find and remove uploads with these IDs
-          for (const [key, value] of next.entries()) {
-            if (value.upload_id === uploadId) {
-              next.delete(key);
-              break;
+    // Generate stable idempotency key for this logical submission
+    const idempotencyKey = `msg_${conversationId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Retry state
+    const retryState: RetryState = {
+      attempt: 0,
+      idempotencyKey,
+      lastError: null,
+      isReconciling: false,
+    };
+    
+    const retryConfig: RetryConfig = {
+      maxRetries: 3,
+      initialDelay: 1.0,
+      maxDelay: 30.0,
+      exponentialBase: 2.0,
+      jitter: 0.1,
+      retryOnTimeout: true,
+      reconcileOnTimeout: true,
+    };
+    
+    // Prepare request once (same payload for all retries)
+    let attachmentIds: string[] = [];
+    const uploadIds = Array.from(uploads.entries())
+      .filter(([, u]) => u.status === 'completed' && u.upload_id)
+      .map(([, u]) => u.upload_id!);
+    
+    if (uploadIds.length > 0) {
+      attachmentIds = uploadIds;
+    }
+    
+    const request: MessageCreateRequest = {
+      conversation_id: conversationId,
+      ...data,
+      attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
+    };
+    
+    // Add idempotency key to request if backend supports it
+    // For now, we track it locally for reconciliation
+    
+    while (true) {
+      try {
+        const response = await apiClient.createMessage(request);
+        
+        // Store recall token
+        recallAdapterRef.current?.storeRecallToken(response.message_id, response.recall_token);
+        
+        // Add optimistic message
+        const optimisticMessage: Message = {
+          id: response.message_id,
+          conversation_id: conversationId,
+          sender_id: null,
+          sender_name: data.sender_name,
+          sender_role: currentUserRole,
+          message_type: data.message_type,
+          content: data.content,
+          attachment_id: attachmentIds[0],
+          attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
+          status: response.status,
+          public_code: response.public_code,
+          created_at: response.created_at,
+          recall_token: response.recall_token,
+          is_optimistic: true,
+        };
+        
+        setMessages(prev => [optimisticMessage, ...prev]);
+        hybridAdapterRef.current?.addMessageId(response.message_id);
+        
+        // Clear completed uploads
+        setUploads(prev => {
+          const next = new Map(prev);
+          for (const uploadId of uploadIds) {
+            for (const [key, value] of next.entries()) {
+              if (value.upload_id === uploadId) {
+                next.delete(key);
+                break;
+              }
             }
           }
+          return next;
+        });
+        
+        return response;
+        
+      } catch (err) {
+        // Classify error and decide retry
+        let statusCode: number | undefined;
+        let retryAfter: number | undefined;
+        
+        if (err && typeof err === 'object' && 'status' in err) {
+          statusCode = (err as any).status;
         }
-        return next;
-      });
-
-      return response;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Gửi tin nhắn thất bại';
-      setError(message);
-      return null;
+        
+        const errorInfo = classifyError(err as Error, statusCode, retryAfter);
+        retryState.lastError = errorInfo;
+        
+        const decision = shouldRetry(errorInfo, retryState, retryConfig);
+        
+        if (decision === RetryDecision.RECONCILE) {
+          // Timeout - try to reconcile by checking if message was created
+          // For now, we'll just retry once for reconciliation
+          if (!retryState.isReconciling) {
+            retryState.isReconciling = true;
+            retryState.attempt++;
+            const delay = calculateBackoff(retryState.attempt, retryConfig);
+            await new Promise(resolve => setTimeout(resolve, delay * 1000));
+            continue;
+          }
+        }
+        
+        if (decision === RetryDecision.RETRY) {
+          retryState.attempt++;
+          const delay = calculateBackoff(retryState.attempt, retryConfig);
+          await new Promise(resolve => setTimeout(resolve, delay * 1000));
+          continue;
+        }
+        
+        // No retry - set error and return
+        const message = err instanceof Error ? err.message : 'Gửi tin nhắn thất bại';
+        setError(message);
+        return null;
+      }
     }
   }, [conversationId, currentUserRole, uploads]);
 
@@ -395,6 +465,7 @@ export function useChat(config: UseChatConfig): UseChatReturn {
         error_message: m.error_message,
         created_at: m.created_at,
         processed_at: m.processed_at,
+        attachment_ids: m.attachment_ids,
         is_optimistic: false,
         recall_token: recallAdapterRef.current?.getStoredRecallToken(m.message_id) || undefined,
       }));

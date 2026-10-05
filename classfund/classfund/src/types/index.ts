@@ -1,4 +1,40 @@
-export type UserRole = 'TREASURER' | 'MODERATOR' | 'MEMBER' | 'PUBLIC';
+// Backend canonical roles (authoritative - matches database enum)
+export type BackendRole = 'OWNER_TREASURER' | 'MODERATOR' | 'MEMBER' | 'PUBLIC';
+
+// Frontend display roles (UI compatible - for display only)
+export type FrontendRole = 'TREASURER' | 'MODERATOR' | 'MEMBER' | 'PUBLIC';
+
+// Legacy alias for backward compatibility
+export type UserRole = FrontendRole;
+
+/**
+ * Normalizes backend canonical role to frontend display role.
+ * Backend is authoritative; this is a one-way mapping for UI display only.
+ */
+export function normalizeRole(backendRole: BackendRole): FrontendRole {
+  switch (backendRole) {
+    case 'OWNER_TREASURER':
+      return 'TREASURER';
+    case 'MODERATOR':
+      return 'MODERATOR';
+    case 'MEMBER':
+      return 'MEMBER';
+    case 'PUBLIC':
+      return 'PUBLIC';
+    default:
+      // Fail closed - unknown roles get minimal access
+      return 'PUBLIC';
+  }
+}
+
+/**
+ * Validates that a role string is a known backend role.
+ * Returns the canonical backend role or null if invalid.
+ */
+export function validateBackendRole(role: string): BackendRole | null {
+  const validRoles: BackendRole[] = ['OWNER_TREASURER', 'MODERATOR', 'MEMBER', 'PUBLIC'];
+  return validRoles.includes(role as BackendRole) ? role as BackendRole : null;
+}
 
 // Phase 4: Message status types (matching backend)
 export type MessageStatus = 
@@ -134,4 +170,11 @@ export type ViewTab =
   | 'guest-chat'
   | 'bank' 
   | 'donate' 
-  | 'public';
+  | 'public'
+  // Admin tabs
+  | 'admin-dashboard'
+  | 'admin-review'
+  | 'admin-ledger'
+  | 'admin-audit'
+  | 'admin-system'
+  | 'admin-users';

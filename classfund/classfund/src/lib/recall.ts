@@ -2,6 +2,22 @@ import { RecallRequest, RecallResponse, MessageStatus } from '../types/chat';
 import { apiClient, ApiError } from './api';
 
 const RECALL_TOKEN_STORAGE_KEY = 'classfund_recall_tokens';
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+
+export interface RecallEligibility {
+  eligible: boolean;
+  message_id: string;
+  status: string;
+  reason: string | null;
+  can_recall_before_post: boolean;
+  can_recall_after_post: boolean;
+  has_token: boolean;
+  token_expired: boolean;
+  token_used: boolean;
+  token_revoked: boolean;
+  already_recalled: boolean;
+  transaction_posted: boolean;
+}
 
 export interface RecallAdapterConfig {
   onRecallSuccess: (messageId: string, response: RecallResponse) => void;
@@ -19,7 +35,41 @@ export class RecallAdapter {
     this.config = config;
   }
 
-  // Check if a message can be recalled
+  // Check if a message can be recalled - uses server-side eligibility check
+  async checkEligibility(messageId: string): Promise<RecallEligibility> {
+    try {
+      const response = await fetch(`${API_BASE}/messages/${messageId}/recall-eligibility`);
+      if (!response.ok) {
+        throw new Error(`Failed to check eligibility: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      // Fallback to client-side check if server unavailable
+      console.warn('[RecallAdapter] Server eligibility check failed, using client-side fallback:', error);
+      return this.clientSideEligibilityCheck(messageId);
+    }
+  }
+
+  private clientSideEligibilityCheck(messageId: string): RecallEligibility {
+    // This would need access to message status - simplified fallback
+    const hasToken = !!this.config.getRecallToken(messageId);
+    return {
+      eligible: hasToken,
+      message_id: messageId,
+      status: 'unknown',
+      reason: hasToken ? 'Client-side check (server unavailable)' : 'No recall token found',
+      can_recall_before_post: hasToken,
+      can_recall_after_post: false,
+      has_token: hasToken,
+      token_expired: false,
+      token_used: false,
+      token_revoked: false,
+      already_recalled: false,
+      transaction_posted: false,
+    };
+  }
+
+  // Check if a message can be recalled (synchronous, uses local state)
   canRecall(messageStatus: MessageStatus, messageId: string): boolean {
     // Can recall if:
     // 1. Message is in a recallable state
@@ -55,6 +105,14 @@ export class RecallAdapter {
     // Check if already recalling
     if (this.pendingRecalls.has(messageId)) {
       throw new Error('Recall already in progress');
+    }
+
+    // First check server-side eligibility
+    const eligibility = await this.checkEligibility(messageId);
+    if (!eligibility.eligible) {
+      const error = eligibility.reason || 'Không thể thu hồi tin nhắn này.';
+      this.config.onRecallError(messageId, error);
+      throw new Error(error);
     }
 
     // Get recall token

@@ -1,0 +1,37 @@
+PHASE 6 IMPLEMENTATION — ENVIRONMENT PROBE (raw)
+Timestamp: 2026-10-05T03:05Z (UTC)  Host: Windows x86-64 (pwsh)
+
+> docker version
+docker: The term 'docker' is not recognized as a name of a cmdlet, function, script file, or executable program.
+
+> Get-ChildItem 'C:\Program Files\Docker','C:\Program Files\MySQL','C:\ProgramData\MySQL','C:\Program Files\Podman'
+C:\Program Files\MySQL\MySQL Server 9.7
+C:\ProgramData\MySQL\MySQL Configurator
+C:\ProgramData\MySQL\MySQL Server 9.7
+(no Docker, no Podman directories)
+
+> where.exe podman wsl mysqld
+C:\Windows\System32\wsl.exe
+INFO: Could not find "podman".
+INFO: Could not find "mysqld".
+
+> & 'C:\Program Files\MySQL\MySQL Server 9.7\bin\mysqld.exe' --version
+C:\Program Files\MySQL\MySQL Server 9.7\bin\mysqld.exe  Ver 9.7.1 for Win64 on x86_64 (MySQL Community Server - GPL)
+
+> Get-Service *mysql*
+MySQL97
+
+> Downloads matching *mysql*
+mysql-9.7.1-winx64.msi
+
+> wsl -l -v
+* Ubuntu    Stopped    2
+
+> wsl -d Ubuntu -- bash -lc "which mysqld docker; mysqld --version; lsb_release -ds"
+Ubuntu 26.04 LTS
+(no mysqld, no docker inside WSL)
+
+CONCLUSION: MySQL 8.4 LTS is NOT available on this machine. Only MySQL 9.7.1 (Innovation track) is installed.
+Docker is not installed, so the docker-compose MySQL 8.4 environment cannot be started.
+Stop condition "Actual MySQL 8.4 is unavailable" (original task section 8) is triggered.
+No implementation or test work was performed after this probe.

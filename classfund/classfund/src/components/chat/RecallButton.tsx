@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { RotateCcw, X, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 import { MessageStatus } from '../../types/chat';
 import { LiquidCard } from '../../components/common/LiquidCard';
+import { useRecall } from '../../hooks/useRecall';
+import { RecallEligibility } from '../../lib/recall';
 
 interface RecallButtonProps {
   messageId: string;
@@ -22,8 +24,30 @@ export const RecallButton: React.FC<RecallButtonProps> = ({
 }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [customReason, setCustomReason] = useState('');
+  const [eligibility, setEligibility] = useState<RecallEligibility | null>(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+
+  const { checkEligibility } = useRecall();
 
   if (!canRecall) return null;
+
+  const handleCheckEligibility = async () => {
+    setCheckingEligibility(true);
+    try {
+      const result = await checkEligibility(messageId);
+      setEligibility(result);
+      if (result.eligible) {
+        setShowConfirm(true);
+      } else {
+        // Show error toast or handle ineligibility
+        console.warn('[RecallButton] Not eligible:', result.reason);
+      }
+    } catch (error) {
+      console.error('[RecallButton] Eligibility check failed:', error);
+    } finally {
+      setCheckingEligibility(false);
+    }
+  };
 
   const handleConfirm = () => {
     onRecall(messageId, status, customReason || undefined);
@@ -60,8 +84,8 @@ export const RecallButton: React.FC<RecallButtonProps> = ({
   return (
     <>
       <button
-        onClick={() => setShowConfirm(true)}
-        disabled={isRecalling}
+        onClick={handleCheckEligibility}
+        disabled={isRecalling || checkingEligibility}
         className={`
           inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full 
           bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 
@@ -73,11 +97,11 @@ export const RecallButton: React.FC<RecallButtonProps> = ({
         title={getRecallLabel(status)}
       >
         <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-        <span>{isRecalling ? 'Đang thu hồi...' : 'THU HỘI'}</span>
+        <span>{isRecalling ? 'Đang thu hồi...' : checkingEligibility ? 'Kiểm tra...' : 'THU HỘI'}</span>
       </button>
 
       {/* Confirmation Modal */}
-      {showConfirm && (
+      {showConfirm && eligibility?.eligible && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
           role="dialog"
@@ -137,6 +161,43 @@ export const RecallButton: React.FC<RecallButtonProps> = ({
                     )}
                   </button>
                 </div>
+              </div>
+            </LiquidCard>
+          </div>
+        </div>
+      )}
+
+      {/* Ineligibility Modal */}
+      {showConfirm && eligibility && !eligibility.eligible && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recall-ineligible-title"
+        >
+          <div className="w-full max-w-md">
+            <LiquidCard variant="elevated" clarity="frosted" className="p-6 animate-in zoom-in-95">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-400" aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <h3 id="recall-ineligible-title" className="text-lg font-bold text-white">
+                    Không thể thu hồi
+                  </h3>
+                  <p className="text-sm text-neutral-300 mt-1">
+                    {eligibility.reason || 'Tin nhắn này không đủ điều kiện để thu hồi.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => { setShowConfirm(false); setCustomReason(''); }}
+                  className="px-4 py-2 rounded-xl bg-amber-500/80 hover:bg-amber-500 text-white text-sm font-medium transition-colors"
+                >
+                  Đóng
+                </button>
               </div>
             </LiquidCard>
           </div>

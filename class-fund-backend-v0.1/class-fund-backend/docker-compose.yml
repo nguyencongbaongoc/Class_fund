@@ -1,19 +1,151 @@
 services:
-  db:
-    image: postgres:17-alpine
+  mysql:
+    image: mysql:8.4
+    platform: linux/amd64
+    container_name: classfund_mysql
     environment:
-      POSTGRES_DB: classfund
-      POSTGRES_USER: classfund
-      POSTGRES_PASSWORD: classfund
+      MYSQL_DATABASE: classfund
+      MYSQL_USER: classfund
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-classfund}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+      - --innodb-buffer-pool-size=256M
+      - --innodb-log-file-size=64M
+      - --innodb-flush-log-at-trx-commit=1
+      - --max-connections=200
+      - --innodb-file-per-table=ON
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - classfund_pgdata:/var/lib/postgresql/data
+      - classfund_mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U classfund -d classfund"]
-      interval: 5s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "classfund", "-p${MYSQL_PASSWORD:-classfund}"]
+      interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
+    networks:
+      - classfund_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    container_name: classfund_redis
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - classfund_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - classfund_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: classfund_backend
+    environment:
+      DATABASE_URL: mysql+pymysql://classfund:${MYSQL_PASSWORD:-classfund}@mysql:3306/classfund?charset=utf8mb4
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_MINUTES: 60
+      UPLOAD_DIR: /app/storage/uploads
+      MAX_UPLOAD_MB: 10
+      AI_CONFIDENCE_THRESHOLD: 0.90
+      ENVIRONMENT: development
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage/uploads:/app/storage/uploads
+      - ./app:/app/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - classfund_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: classfund_worker
+    environment:
+      DATABASE_URL: mysql+pymysql://classfund:${MYSQL_PASSWORD:-classfund}@mysql:3306/classfund?charset=utf8mb4
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      AI_CONFIDENCE_THRESHOLD: 0.90
+      ENVIRONMENT: development
+      WORKER_ID: ${WORKER_ID:-worker-1}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_VISION_MODEL: qwen2.5vl:3b
+      OLLAMA_TEXT_MODEL: qwen3.5:4b
+    volumes:
+      - ./storage/uploads:/app/storage/uploads
+      - ./app:/app/app
+      - ./worker:/app/worker
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - classfund_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+networks:
+  classfund_network:
+    driver: bridge
+    name: classfund_network
 
 volumes:
-  classfund_pgdata:
+  classfund_mysql_data:
+    driver: local
+  classfund_redis_data:
+    driver: local

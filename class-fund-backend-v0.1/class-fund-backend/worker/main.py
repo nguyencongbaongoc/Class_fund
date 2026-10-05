@@ -18,6 +18,7 @@ from app.models.models import (
     Message, MessageStatus, Transaction, Upload, UploadStatus
 )
 from app.services.ledger import verify_and_post_from_ai, ProcessingResult
+from ai.duplicate.service import DuplicateDetector
 
 
 class Worker:
@@ -26,14 +27,45 @@ class Worker:
         self.database_url = database_url
         self.lease_duration_seconds = lease_duration_seconds
         self.running = False
+        self.duplicate_loading_failed = False
+        self.duplicate_detector = None
         self.engine = create_engine(database_url, future=True, pool_size=5, max_overflow=10)
         self.Session = sessionmaker(bind=self.engine)
         
     def startup(self):
-        """Initialize worker: reclaim stale leases, register status."""
+        """Initialize worker: reclaim stale leases, load duplicate data, register status."""
         self.reclaim_stale_leases()
+        
+        # Load persistent duplicate detection data before accepting jobs
+        success, error = self._load_duplicate_detection_data()
+        if not success:
+            print(f"CRITICAL: Failed to load duplicate detection data: {error}")
+            print("Worker will not accept duplicate-dependent jobs until data is loaded.")
+            # In production, you might want to exit or enter a degraded mode
+            # For now, we log and continue but mark the worker as degraded
+            self.duplicate_loading_failed = True
+        else:
+            self.duplicate_loading_failed = False
+            print(f"Worker {self.worker_id} duplicate detection data loaded successfully")
+        
         self.upsert_worker_status("online")
         print(f"Worker {self.worker_id} started")
+
+    def _load_duplicate_detection_data(self) -> tuple[bool, Optional[str]]:
+        """Load duplicate detection data from database."""
+        try:
+            # Create a detector instance
+            detector = DuplicateDetector()
+            with self.Session() as db:
+                success, error = detector.load_from_database(db)
+                if not success:
+                    return False, error
+                
+                # Store the detector for use in processing
+                self.duplicate_detector = detector
+                return True, None
+        except Exception as e:
+            return False, str(e)
         
     def shutdown(self):
         """Graceful shutdown."""

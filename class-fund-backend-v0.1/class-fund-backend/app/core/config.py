@@ -1,11 +1,12 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 
 class Settings(BaseSettings):
     app_name: str = "Class Fund API"
     environment: str = "development"
-    database_url: str = "postgresql+psycopg://classfund:classfund@localhost:5432/classfund"
+    database_url: str = "mysql+pymysql://classfund:classfund@localhost:3306/classfund?charset=utf8mb4"
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60
@@ -14,6 +15,10 @@ class Settings(BaseSettings):
     ai_service_key: str = "change-me-ai-service-key"
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     ai_confidence_threshold: float = 0.90
+    
+    # Optional external service configuration
+    ollama_base_url: Optional[str] = None
+    redis_url: Optional[str] = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 

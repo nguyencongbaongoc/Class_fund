@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ViewTab, UserRole } from '../../types';
+import { ViewTab, FrontendRole } from '../../types';
 import { LiquidGlassCard } from './LiquidGlassCard';
 import { 
   Sparkles, 
@@ -15,6 +15,8 @@ export const Navbar: React.FC = () => {
     currentTab, 
     setCurrentTab, 
     currentUser, 
+    currentUserFrontendRole,
+    currentBackendRole,
     switchRole, 
     setIsE2EModalOpen,
     setIsWallpaperModalOpen,
@@ -23,6 +25,8 @@ export const Navbar: React.FC = () => {
     triggerPerimeterGlow,
     addToast
   } = useApp();
+
+  const isAdmin = currentBackendRole === 'OWNER_TREASURER' || currentBackendRole === 'MODERATOR';
 
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const consecutiveClicksRef = useRef(0);
@@ -69,9 +73,16 @@ export const Navbar: React.FC = () => {
     { tab: 'chat', label: 'Chat lớp' },
     { tab: 'bank', label: 'VietQR' },
     { tab: 'donate', label: 'Donate me' },
+    ...(isAdmin ? [
+      { tab: 'admin-dashboard' as ViewTab, label: 'Admin: Tổng quan' },
+      { tab: 'admin-review' as ViewTab, label: 'Admin: AI Duyệt' },
+      { tab: 'admin-ledger' as ViewTab, label: 'Admin: Sổ cái' },
+      { tab: 'admin-audit' as ViewTab, label: 'Admin: Audit Log' },
+      { tab: 'admin-system' as ViewTab, label: 'Admin: Hệ thống' },
+    ] : []),
   ];
 
-  const roles: { role: UserRole; title: string; desc: string }[] = [
+  const roles: { role: FrontendRole; title: string; desc: string }[] = [
     { role: 'TREASURER', title: 'Thủ quỹ (Owner)', desc: 'Quyền cao nhất: Revert, Chi quỹ, Quản lý đợt thu' },
     { role: 'MODERATOR', title: 'Moderator (Lớp phó)', desc: 'Ghim thông báo [MOD], duyệt biên lai' },
     { role: 'MEMBER', title: 'Thành viên (Học sinh)', desc: 'Nộp biên lai, xem trạng thái, chat lớp' },
@@ -181,10 +192,10 @@ export const Navbar: React.FC = () => {
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="truncate max-w-[90px] sm:max-w-[130px] font-semibold">
-                {currentUser.role === 'TREASURER' && 'Thủ quỹ'}
-                {currentUser.role === 'MODERATOR' && 'Moderator'}
-                {currentUser.role === 'MEMBER' && 'Học sinh'}
-                {currentUser.role === 'PUBLIC' && 'Khách'}
+                {currentUserFrontendRole === 'TREASURER' && 'Thủ quỹ'}
+                {currentUserFrontendRole === 'MODERATOR' && 'Moderator'}
+                {currentUserFrontendRole === 'MEMBER' && 'Học sinh'}
+                {currentUserFrontendRole === 'PUBLIC' && 'Khách'}
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-neutral-300 transition-transform ${roleDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -200,7 +211,7 @@ export const Navbar: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   {roles.map((r) => {
-                    const isSelected = currentUser.role === r.role;
+                    const isSelected = currentUserFrontendRole === r.role;
                     return (
                       <button
                         key={r.role}

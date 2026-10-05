@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
+
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -151,3 +152,32 @@ class ChatMessageOut(BaseModel):
     attachment_id: str | None
     ledger_entry_id: str | None
     created_at: datetime
+
+
+class ExtractionData(BaseModel):
+    transaction_code: Optional[str] = None
+    amount: Optional[int] = None
+    sender_name: Optional[str] = None
+    bank_name: Optional[str] = None
+    transaction_time: Optional[str] = None
+    confidence: Optional[float] = None
+    raw_ocr: Optional[str] = None
+    status: Optional[str] = None
+    field_confidences: Optional[dict[str, float]] = None
+
+
+class MessageExtractionResponse(BaseModel):
+    message_id: str
+    conversation_id: str
+    sender_name: str
+    sender_role: str
+    message_type: str
+    content: str
+    status: str
+    public_code: Optional[str] = None
+    transaction_id: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    processed_at: Optional[datetime] = None
+    attachment_ids: Optional[list[str]] = None
+    extraction: Optional[ExtractionData] = None

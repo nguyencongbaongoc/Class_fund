@@ -20,6 +20,7 @@ export interface Message {
   message_type: MessageType;
   content: string;
   attachment_id?: string;
+  attachment_ids?: string[];
   status: MessageStatus;
   public_code?: string;
   transaction_id?: string;
@@ -39,6 +40,18 @@ export interface Message {
     sender_name: string;
     uploader_name: string;
     time: string;
+    bank_name?: string;
+    field_confidences?: Record<string, number>;
+  };
+  extraction_result?: {
+    transaction_code?: string;
+    amount?: number;
+    sender_name?: string;
+    bank_name?: string;
+    transaction_time?: string;
+    confidence?: number;
+    status?: string;
+    field_confidences?: Record<string, number>;
   };
 }
 
@@ -56,7 +69,7 @@ export interface MessageCreateRequest {
   conversation_id: string;
   sender_name: string;
   sender_photo?: string;
-  message_type: 'TEXT' | 'RECEIPT' | 'IMAGE' | 'ANNOUNCEMENT';
+  message_type: 'TEXT' | 'RECEIPT' | 'IMAGE' | 'ANNOUNCEMENT' | 'SYSTEM';
   content: string;
   attachment_ids?: string[];
 }
@@ -94,6 +107,7 @@ export interface MessageStatusResponse {
   error_message?: string;
   created_at: string;
   processed_at?: string;
+  attachment_ids?: string[];
 }
 
 export interface ListMessagesRequest {
