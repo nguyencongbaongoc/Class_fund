@@ -70,7 +70,7 @@ flowchart TD
     end
 
     subgraph DataLayer ["Lớp Dữ liệu Bất biến (MySQL 8.4/9.x - Port 3306)"]
-        DB[(MySQL Database: classfund)<br/>- uploads (pHash, SHA256)<br/>- messages (Lease 300s)<br/>- transactions & ledger_entries (DECIMAL 18,2)<br/>- idempotency_keys & audit_logs]
+        DB[("MySQL Database: classfund<br/>- uploads (pHash, SHA256)<br/>- messages (Lease 300s)<br/>- transactions & ledger_entries (DECIMAL 18,2)<br/>- idempotency_keys & audit_logs")]
         Storage["Thư mục lưu trữ tệp cục bộ<br/>(./uploads & ./storage/uploads)"]
     end
 
