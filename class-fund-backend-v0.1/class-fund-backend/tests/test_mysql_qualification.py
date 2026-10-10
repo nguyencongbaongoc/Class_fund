@@ -613,14 +613,17 @@ def test_15_live_gtid_replication_and_read_only_enforcement():
     If replica is not available, the test is skipped with a clear message.
     """
     # Try to connect to Replica
+    root_pass = os.environ.get("MYSQL_ROOT_PASS", "000000")
     try:
-        conn_rep = pymysql.connect(host="127.0.0.1", port=3308, user="root", database="classfund", connect_timeout=5)
+        conn_rep = pymysql.connect(host="127.0.0.1", port=3308, user="root", password=root_pass, database="classfund", connect_timeout=5)
     except pymysql.err.OperationalError as e:
-        if e.args[0] in (2003, 2013):  # Connection refused or lost connection
+        if e.args[0] in (1698, 1045):
+            pytest.skip("Replica root access not available - skipping replication test")
+        elif e.args[0] in (2003, 2013):  # Connection refused or lost connection
             pytest.skip("Replica MySQL not available on port 3308 - skipping replication test")
         raise
     
-    conn_rep = pymysql.connect(host="127.0.0.1", port=3308, user="root", database="classfund")
+    conn_rep = pymysql.connect(host="127.0.0.1", port=3308, user="root", password=root_pass, database="classfund")
     cur_rep = conn_rep.cursor()
     cur_rep.execute("SHOW REPLICA STATUS;")
     cols = [desc[0] for desc in cur_rep.description]
@@ -631,7 +634,7 @@ def test_15_live_gtid_replication_and_read_only_enforcement():
     assert status.get("Replica_SQL_Running") == "Yes", f"Replica SQL not running: {status.get('Last_SQL_Error')}"
 
     # 2. Insert test account on Primary (port 3306)
-    conn_pri = pymysql.connect(host="127.0.0.1", port=3306, user="root", database="classfund")
+    conn_pri = pymysql.connect(host="127.0.0.1", port=3306, user="root", password=root_pass, database="classfund")
     cur_pri = conn_pri.cursor()
     test_id = str(uuid4())
     test_name = f"ReplicaVerification_{test_id[:8]}"
@@ -642,10 +645,15 @@ def test_15_live_gtid_replication_and_read_only_enforcement():
     )
     conn_pri.commit()
 
-    # 3. Verify record appears on Replica
-    time.sleep(0.5)
-    cur_rep.execute("SELECT id, name, opening_balance FROM accounts WHERE id = %s;", (test_id,))
-    row = cur_rep.fetchone()
+    # 3. Verify record appears on Replica (poll up to 5s for replication)
+    row = None
+    for _ in range(10):
+        time.sleep(0.5)
+        conn_rep.commit()
+        cur_rep.execute("SELECT id, name, opening_balance FROM accounts WHERE id = %s;", (test_id,))
+        row = cur_rep.fetchone()
+        if row is not None:
+            break
     assert row is not None, "Replication lag or failure: row not found on replica!"
     assert row[0] == test_id
     assert row[1] == test_name
@@ -737,11 +745,20 @@ def test_16_controlled_promotion_and_failover():
 
         cur_rep.execute("SELECT id FROM accounts WHERE id = %s;", (prom_id,))
         assert cur_rep.fetchone() is not None, "Promoted replica failed to persist write!"
+        # Clean up test write before demoting back to replica to prevent errant transaction divergence
+        cur_rep.execute("DELETE FROM accounts WHERE id = %s;", (prom_id,))
         conn_rep.commit()
 
     finally:
         # Restore topology: 3306 Primary, 3308 Replica
         try:
+            if 'prom_id' in locals():
+                try:
+                    cur_rep.execute("DELETE FROM accounts WHERE id = %s;", (prom_id,))
+                    conn_rep.commit()
+                except Exception:
+                    pass
+
             cur_pri.execute("SET GLOBAL super_read_only = OFF;")
             cur_pri.execute("SET GLOBAL read_only = OFF;")
             conn_pri.commit()

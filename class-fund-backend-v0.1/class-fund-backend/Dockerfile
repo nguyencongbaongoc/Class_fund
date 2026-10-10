@@ -1,0 +1,57 @@
+# ==============================================================================
+# CLASS_FUND_WEB - Backend API Multi-Stage Multi-Arch Dockerfile
+# Supported Architectures: linux/amd64, linux/arm64
+# ==============================================================================
+
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    libmariadb-dev \
+    pkg-config \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir .
+
+FROM python:3.12-slim AS runner
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libmariadb3 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 10001 classfund && \
+    useradd -u 10001 -g classfund -s /bin/bash -m classfund
+
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+COPY --chown=classfund:classfund ai /app/ai
+COPY --chown=classfund:classfund app /app/app
+COPY --chown=classfund:classfund alembic /app/alembic
+COPY --chown=classfund:classfund alembic.ini /app/alembic.ini
+COPY --chown=classfund:classfund pyproject.toml /app/pyproject.toml
+
+RUN mkdir -p /app/storage/uploads && chown -R classfund:classfund /app/storage
+
+USER classfund
+
+EXPOSE 8000
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENVIRONMENT=production \
+    UPLOAD_DIR=/app/storage/uploads
+
+HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://127.0.0.1:8000/api/v1/health || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--proxy-headers", "--forwarded-allow-ips", "*"]

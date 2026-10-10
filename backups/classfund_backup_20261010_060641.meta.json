@@ -1,0 +1,34 @@
+{
+  "timestamp": "20261010_060641",
+  "backup_file": "C:\\Users\\Nguyen Cong Thong\\Desktop\\CLASS_FUND_WEB\\backups\\classfund_backup_20261010_060641.sql.gz",
+  "size_bytes": 57,
+  "sha256": "a8683639e6355cd8549613dcf3db52314c5172793c610ceeaeea7601157fa94a",
+  "mysql_version": "9.7.1",
+  "binlog_file": "PC-bin.000005",
+  "binlog_position": 3172004,
+  "gtid_executed": "5e10d807-bfeb-11f1-9cc2-d8bbc13b2fc2:1-2357",
+  "tables_count": 19,
+  "row_counts": {
+    "accounts": 175,
+    "transactions": 120,
+    "ledger_entries": 120,
+    "uploads": 40,
+    "messages": 120,
+    "users": 40,
+    "audit_logs": 120,
+    "payment_matches": 0,
+    "extracted_transactions": 40,
+    "campaign_members": 0,
+    "students": 0,
+    "collection_campaigns": 0,
+    "bank_accounts": 40,
+    "revoked_tokens": 20,
+    "recall_tokens": 0,
+    "worker_status": 3,
+    "chat_messages": 100
+  },
+  "ledger_snapshot": {
+    "count": 120,
+    "total_amount_vnd": "8500000.00"
+  }
+}

@@ -7,6 +7,7 @@ import sys
 import time
 import uuid
 import json
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -15,12 +16,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from redis.asyncio import Redis, ConnectionPool
 
 from app.core.config import get_settings
+from app.core.logging import setup_structured_logging, correlation_id_ctx, worker_id_ctx
+from app.core.alerting import alert_manager
 from app.models.models import (
     Account, BankAccount, ExtractedTransaction, LedgerSource, LedgerType,
     Message, MessageStatus, Transaction, Upload, UploadStatus, WorkerStatus
 )
 from app.services.ledger import verify_and_post_from_ai, ProcessingResult
 from ai.duplicate.service import DuplicateDetector
+
+logger = logging.getLogger("worker")
 
 
 class Worker:
@@ -70,22 +75,20 @@ class Worker:
         
     def startup(self):
         """Initialize worker: reclaim stale leases, load duplicate data, register status."""
+        worker_id_ctx.set(self.worker_id)
         self.reclaim_stale_leases()
         
         # Load persistent duplicate detection data before accepting jobs
         success, error = self._load_duplicate_detection_data()
         if not success:
-            print(f"CRITICAL: Failed to load duplicate detection data: {error}")
-            print("Worker will not accept duplicate-dependent jobs until data is loaded.")
-            # In production, you might want to exit or enter a degraded mode
-            # For now, we log and continue but mark the worker as degraded
+            logger.critical(f"Failed to load duplicate detection data: {error}", extra={"worker_id": self.worker_id})
             self.duplicate_loading_failed = True
         else:
             self.duplicate_loading_failed = False
-            print(f"Worker {self.worker_id} duplicate detection data loaded successfully")
+            logger.info(f"Worker {self.worker_id} duplicate detection data loaded successfully", extra={"worker_id": self.worker_id})
         
         self.upsert_worker_status("online")
-        print(f"Worker {self.worker_id} started")
+        logger.info(f"Worker {self.worker_id} started successfully", extra={"worker_id": self.worker_id})
 
     def _load_duplicate_detection_data(self) -> tuple[bool, Optional[str]]:
         """Load duplicate detection data from database."""
@@ -170,12 +173,15 @@ class Worker:
             
     def process_message(self, message: Message):
         """Process a single message through the AI pipeline."""
+        # Set structured logging context tags for correlation
+        correlation_id_ctx.set(f"job_{message.id}")
+        transaction_id_ctx.set(message.id)
         try:
             # Check if message was recalled before processing
             db = self.Session()
             db.expire(message)
             if message.status == MessageStatus.RECALLED.value:
-                print(f"Message {message.id} was recalled, skipping")
+                logger.info(f"Message {message.id} was recalled, skipping", extra={"message_id": message.id})
                 return
                 
             # Get the associated upload
@@ -229,6 +235,8 @@ class Worker:
         except Exception as e:
             self.handle_error(message, e)
         finally:
+            correlation_id_ctx.set("")
+            transaction_id_ctx.set("")
             db.close()
             
     def complete_message(self, message: Message, result):
@@ -298,7 +306,16 @@ class Worker:
             
     def handle_error(self, message: Message, error: Exception):
         """Handle unexpected errors."""
-        print(f"Error processing message {message.id}: {error}")
+        err_str = str(error).lower()
+        if "1213" in err_str or "deadlock" in err_str:
+            alert_manager.record_deadlock_retry(message.id, retry_count=message.retry_count + 1)
+        if "ollama" in err_str or "circuit" in err_str or "vision" in err_str:
+            alert_manager.record_circuit_breaker_trip("ollama_vision", str(error))
+        logger.error(
+            f"Error processing message {message.id}: {error}",
+            extra={"message_id": message.id, "error": str(error)},
+            exc_info=True,
+        )
         self.fail_message(message, str(error), ProcessingResult.RETRYABLE)
         
     def run(self):
@@ -329,7 +346,8 @@ class Worker:
 
 def main():
     settings = get_settings()
-    worker_id = os.getenv("WORKER_ID", f"worker-{uuid.uuid4().hex[:8]}")
+    setup_structured_logging(environment=settings.environment)
+    worker_id = os.getenv("WORKER_ID", getattr(settings, "worker_id", f"worker-{uuid.uuid4().hex[:8]}"))
     database_url = os.getenv("DATABASE_URL", settings.database_url)
     lease_duration = int(os.getenv("LEASE_DURATION", "300"))
     

@@ -1,0 +1,99 @@
+# CLASS_FUND_WEB - Production Edge Ingress Reverse Proxy Configuration (Caddy 2)
+# Handles automated ACME Let's Encrypt TLS, WSS reverse proxy, security headers, and compression.
+
+{
+    admin off
+    auto_https disable_redirects
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Production Ingress Site Block
+{$DOMAIN:localhost} {
+    # TLS Configuration:
+    # In live production with valid public domain: Caddy automatically acquires and renews Let's Encrypt / ZeroSSL certs.
+    # In development, staging, or offline environments, fallback to Caddy's internal custom CA:
+    tls {$TLS_MODE:internal}
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: https:; font-src 'self'; object-src 'none'; frame-ancestors 'none';"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+
+    # Compression
+    encode zstd gzip
+
+    # Health check passthrough (unauthenticated probe)
+    handle /api/v1/health* {
+        reverse_proxy backend:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Prometheus metrics passthrough
+    handle /metrics* {
+        reverse_proxy backend:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # WebSocket Real-time Routes (/ws/*)
+    handle /ws/* {
+        reverse_proxy backend:8000 {
+            header_up Upgrade {>Upgrade}
+            header_up Connection {>Connection}
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            transport http {
+                read_buffer 4096
+            }
+        }
+    }
+
+    # REST API Routes (/api/v1/*, /docs, /redoc, /openapi.json)
+    handle /api/* {
+        reverse_proxy backend:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /docs* {
+        reverse_proxy backend:8000
+    }
+
+    handle /redoc* {
+        reverse_proxy backend:8000
+    }
+
+    handle /openapi.json {
+        reverse_proxy backend:8000
+    }
+
+    # Frontend Single Page Application
+    handle {
+        reverse_proxy frontend:80 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}

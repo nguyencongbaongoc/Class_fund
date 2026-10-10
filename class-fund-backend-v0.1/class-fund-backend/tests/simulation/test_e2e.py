@@ -341,81 +341,53 @@ class TestScenarioFExternalServiceFailure:
         assert claimed.status in (MessageStatus.AWAITING_REVIEW.value, MessageStatus.PENDING.value)
     
     def test_database_timeout(self, db, test_account, test_bank_account, test_upload, test_extraction, mock_ollama):
-        """Test database timeout simulation."""
-        # This would require injecting DB failure - skip for now
-        pytest.skip("DB timeout injection not implemented")
-    
-    def test_realtime_disconnected(self, db, test_account, test_bank_account, test_upload, test_extraction, mock_supabase):
-        """Test realtime disconnected."""
-        mock_supabase.sim_config.inject_realtime_disconnect = True
-        
-        from app.services.supabase_client import get_supabase_client
-        supabase = get_supabase_client()
-        
-        channel = supabase.subscribe_to_messages("conv-1", lambda x: None)
-        assert channel.subscribed == False
-    
-class TestScenarioFExternalServiceFailure:
-    """SCENARIO F — EXTERNAL SERVICE FAILURE"""
-    
-    def test_storage_unavailable(self, db, test_account, test_bank_account, test_upload, test_extraction, mock_ollama, mock_supabase):
-        """Test storage unavailable."""
-        mock_supabase.sim_config.inject_storage_failure = True
-        
-        # Try to upload - should fail gracefully
-        from app.services.supabase_client import get_supabase_client
-        supabase = get_supabase_client()
-        
-        with pytest.raises(Exception, match="Storage upload failed"):
-            supabase.upload_receipt(b"test", "test.png", "image/png")
-    
-    def test_ollama_unavailable(self, db, test_account, test_bank_account, test_upload, test_extraction, mock_ollama):
-        """Test Ollama unavailable - extraction fails with low confidence requiring review."""
-        # Clear existing extraction to simulate Ollama failure
-        db.delete(test_extraction)
-        db.commit()
-        
-        mock_ollama.sim_config.ollama_available = False
-        
-        # Worker processes - should fail with human review
+        """Test database timeout simulation during worker transaction execution."""
         from tests.simulation.mock_worker import create_test_worker
+        from sqlalchemy.exc import OperationalError
+        
         worker = create_test_worker(db)
         
-        # Create fresh message with NEW upload (no extraction)
-        new_upload = Upload(
-            file_hash="b" * 64,
-            original_filename="receipt2.png",
-            storage_path="uploads/receipt2.png",
-            uploaded_by="member-1",
-            uploader_name="Test Member",
-            status=UploadStatus.PENDING
-        )
-        db.add(new_upload)
-        db.commit()
-        
+        # Create a message to process
         msg = Message(
-            conversation_id="conv-ollama-down",
-            sender_name="Test",
+            conversation_id="conv-timeout-recovery",
+            sender_name="Timeout Test Sender",
             sender_role="MEMBER",
             message_type="RECEIPT",
-            content="Test",
-            attachment_id=new_upload.id,
+            content="Simulated DB timeout test",
+            attachment_id=test_upload.id,
             status=MessageStatus.PENDING.value,
         )
         db.add(msg)
         db.commit()
         
         claimed = worker.claim_next_message(db)
-        worker.process_message(db, claimed)
+        assert claimed is not None, "Worker must claim pending message"
+        
+        # Simulate an operational database timeout
+        db_timeout = OperationalError(
+            "statement timeout",
+            params={},
+            orig=Exception("Query execution was interrupted, max_statement_time exceeded")
+        )
+        worker.handle_error(db, claimed, db_timeout)
         
         db.expire(claimed)
-        # When Ollama is unavailable, no extraction is found, should go to PENDING for retry
-        assert claimed.status in (MessageStatus.AWAITING_REVIEW.value, MessageStatus.PENDING.value)
-    
-    def test_database_timeout(self, db, test_account, test_bank_account, test_upload, test_extraction, mock_ollama):
-        """Test database timeout simulation."""
-        # This would require injecting DB failure - skip for now
-        pytest.skip("DB timeout injection not implemented")
+        # Message should enter retryable backoff
+        assert claimed.status == MessageStatus.PENDING.value
+        assert claimed.retry_count == 1
+        assert "timeout" in claimed.error_message.lower()
+        
+        # Verify worker can re-claim and successfully process once database recovers
+        claimed.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        db.commit()
+        
+        reclaimed = worker.claim_next_message(db)
+        assert reclaimed is not None
+        assert reclaimed.id == claimed.id
+        worker.process_message(db, reclaimed)
+        
+        db.expire(reclaimed)
+        assert reclaimed.status == MessageStatus.POSTED.value
     
     def test_realtime_disconnected(self, db, test_account, test_bank_account, test_upload, test_extraction, mock_supabase):
         """Test realtime disconnected."""

@@ -1,0 +1,355 @@
+# ==============================================================================
+# CLASS_FUND_WEB - Production Docker Compose Specification
+# Hardened Multi-Arch Production Stack with Edge Ingress, GTID Clustering & Observability
+# ==============================================================================
+
+version: '3.8'
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+  # ============================================================================
+  # 1. Edge Reverse Proxy (Caddy 2 - Automated ACME TLS & WSS Ingress)
+  # ============================================================================
+  proxy:
+    image: ${DOCKER_REGISTRY:-classfund}/proxy:${VERSION:-1.0.0-production}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    container_name: classfund_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      TLS_MODE: ${TLS_MODE:-internal}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@classfund.local}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./docker/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:80/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.2'
+          memory: 64M
+    logging: *default-logging
+    networks:
+      - classfund_public
+      - classfund_internal
+
+  # ============================================================================
+  # 2. Frontend (Single Page Application - React/Vite Static Runner)
+  # ============================================================================
+  frontend:
+    image: ${DOCKER_REGISTRY:-classfund}/frontend:${VERSION:-1.0.0-production}
+    build:
+      context: ./classfund/classfund
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: /api/v1
+        VITE_WS_URL: /ws
+    container_name: classfund_frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging: *default-logging
+    networks:
+      - classfund_internal
+
+  # ============================================================================
+  # 3. Backend API Service (FastAPI)
+  # ============================================================================
+  backend:
+    image: ${DOCKER_REGISTRY:-classfund}/backend:${VERSION:-1.0.0-production}
+    build:
+      context: ./class-fund-backend-v0.1/class-fund-backend
+      dockerfile: Dockerfile
+    container_name: classfund_backend
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-classfund}:${MYSQL_PASSWORD}@mysql-primary:3306/${MYSQL_DATABASE:-classfund}?charset=utf8mb4
+      DATABASE_URL_REPLICA: mysql+pymysql://${MYSQL_USER:-classfund}:${MYSQL_PASSWORD}@mysql-replica:3306/${MYSQL_DATABASE:-classfund}?charset=utf8mb4
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_MINUTES: 60
+      UPLOAD_DIR: /app/storage/uploads
+      MAX_UPLOAD_MB: 10
+      AI_CONFIDENCE_THRESHOLD: 0.90
+      ENVIRONMENT: production
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://localhost,https://127.0.0.1}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      METRICS_ENABLED: "true"
+      LOG_FORMAT: "json"
+    volumes:
+      - classfund_uploads:/app/storage/uploads
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging: *default-logging
+    networks:
+      - classfund_internal
+
+  # ============================================================================
+  # 4. Asynchronous Financial Worker
+  # ============================================================================
+  worker:
+    image: ${DOCKER_REGISTRY:-classfund}/worker:${VERSION:-1.0.0-production}
+    build:
+      context: ./class-fund-backend-v0.1/class-fund-backend
+      dockerfile: Dockerfile.worker
+    container_name: classfund_worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-classfund}:${MYSQL_PASSWORD}@mysql-primary:3306/${MYSQL_DATABASE:-classfund}?charset=utf8mb4
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      AI_CONFIDENCE_THRESHOLD: 0.90
+      ENVIRONMENT: production
+      WORKER_ID: ${WORKER_ID:-worker-prod-1}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_VISION_MODEL: qwen2.5vl:3b
+      OLLAMA_TEXT_MODEL: qwen3.5:4b
+      UPLOAD_DIR: /app/storage/uploads
+    volumes:
+      - classfund_uploads:/app/storage/uploads
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging: *default-logging
+    networks:
+      - classfund_internal
+
+  # ============================================================================
+  # 5. MySQL 8.4 Primary (Source - Read-Write)
+  # ============================================================================
+  mysql-primary:
+    image: mysql:8.4
+    platform: linux/amd64
+    container_name: classfund_mysql_primary
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-classfund}
+      MYSQL_USER: ${MYSQL_USER:-classfund}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_REPLICATION_USER: ${MYSQL_REPL_USER:-repl_user}
+      MYSQL_REPLICATION_PASSWORD: ${MYSQL_REPL_PASSWORD}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+      - --innodb-buffer-pool-size=512M
+      - --innodb-log-file-size=128M
+      - --innodb-flush-log-at-trx-commit=1
+      - --max-connections=300
+      - --innodb-file-per-table=ON
+      - --server-id=1
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --binlog-format=ROW
+      - --log-bin=mysql-bin
+      - --sync-binlog=1
+      - --binlog-row-image=FULL
+      - --log-replica-updates=ON
+    ports:
+      - "3306:3306"
+    volumes:
+      - classfund_mysql_primary_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "${MYSQL_USER:-classfund}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging: *default-logging
+    networks:
+      - classfund_internal
+
+  # ============================================================================
+  # 6. MySQL 8.4 Replica (Hot Standby - Read-Only with super_read_only=ON)
+  # ============================================================================
+  mysql-replica:
+    image: mysql:8.4
+    platform: linux/amd64
+    container_name: classfund_mysql_replica
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-classfund}
+      MYSQL_USER: ${MYSQL_USER:-classfund}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_REPLICATION_USER: ${MYSQL_REPL_USER:-repl_user}
+      MYSQL_REPLICATION_PASSWORD: ${MYSQL_REPL_PASSWORD}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+      - --innodb-buffer-pool-size=512M
+      - --innodb-log-file-size=128M
+      - --innodb-flush-log-at-trx-commit=1
+      - --max-connections=300
+      - --innodb-file-per-table=ON
+      - --server-id=2
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --binlog-format=ROW
+      - --log-bin=mysql-bin
+      - --sync-binlog=1
+      - --binlog-row-image=FULL
+      - --log-replica-updates=ON
+      - --read-only=ON
+      - --super-read-only=ON
+      - --relay-log=mysql-relay-bin
+    ports:
+      - "3308:3306"
+    volumes:
+      - classfund_mysql_replica_data:/var/lib/mysql
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "${MYSQL_USER:-classfund}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging: *default-logging
+    networks:
+      - classfund_internal
+
+  # ============================================================================
+  # 7. Redis 7 (In-Memory Pub/Sub & Distributed Lease Cache)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: classfund_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    expose:
+      - "6379"
+    volumes:
+      - classfund_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    logging: *default-logging
+    networks:
+      - classfund_internal
+
+networks:
+  classfund_public:
+    driver: bridge
+    name: classfund_public
+  classfund_internal:
+    driver: bridge
+    internal: true
+    name: classfund_internal
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  classfund_uploads:
+    driver: local
+  classfund_mysql_primary_data:
+    driver: local
+  classfund_mysql_replica_data:
+    driver: local
+  classfund_redis_data:
+    driver: local

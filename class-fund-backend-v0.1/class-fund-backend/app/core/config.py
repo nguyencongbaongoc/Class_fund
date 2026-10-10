@@ -19,6 +19,19 @@ class Settings(BaseSettings):
     # Optional external service configuration
     ollama_base_url: Optional[str] = None
     redis_url: Optional[str] = None
+    database_url_replica: Optional[str] = None
+
+    # Production TLS & Proxy Configuration
+    domain: str = "localhost"
+    acme_email: Optional[str] = None
+    enforce_https: bool = False
+    mysql_ssl_mode: Optional[str] = None
+    mysql_ssl_ca: Optional[str] = None
+
+    # Observability & Metrics
+    metrics_enabled: bool = True
+    log_format: str = "json"
+    worker_id: str = "worker-1"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 

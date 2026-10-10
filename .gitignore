@@ -1,0 +1,11 @@
+.env
+.env.production
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+backups/*.sql.gz
+storage/uploads/*
+!storage/uploads/.gitkeep

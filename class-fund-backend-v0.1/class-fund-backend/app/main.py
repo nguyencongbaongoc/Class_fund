@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.logging import CorrelationIdMiddleware, setup_structured_logging
 from app.api.routes import auth, campaigns, chat, fund, health, uploads, messages, vision, review
 from app.api.routes import ai_internal, public, admin, realtime
 from app.core.config import get_settings
@@ -14,6 +15,7 @@ from app.db.init_db import init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    setup_structured_logging(environment=settings.environment)
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     # Initialize realtime manager
     await manager.initialize()
@@ -26,7 +28,14 @@ async def lifespan(app: FastAPI):
 
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="0.1.0", docs_url="/docs", redoc_url="/redoc")
+setup_structured_logging(environment=settings.environment)
+Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+
+app = FastAPI(title=settings.app_name, version="1.0.0", docs_url="/docs", redoc_url="/redoc")
+
+# Correlation ID Middleware (must be outer)
+app.add_middleware(CorrelationIdMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -34,6 +43,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Root-level metrics & health for Prometheus scrapers and load balancers
+app.include_router(health.router)
 
 prefix = "/api/v1"
 app.include_router(health.router, prefix=prefix)
@@ -48,6 +60,7 @@ app.include_router(messages.router, prefix=prefix)
 app.include_router(vision.router, prefix=prefix)
 app.include_router(review.router, prefix=prefix)
 app.include_router(admin.router, prefix=prefix)
+app.include_router(realtime.router, prefix=prefix)
 
 # WebSocket routes (no prefix, they use /ws/)
 app.include_router(realtime.router)
