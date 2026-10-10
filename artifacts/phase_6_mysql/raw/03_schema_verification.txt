@@ -1,0 +1,84 @@
+=== MYSQL 8.4 SERVER VARIABLES ===
+VERSION: 8.4.11
+SQL_MODE: STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+CHARACTER_SET: utf8mb4
+COLLATION: utf8mb4_unicode_ci
+TIME_ZONE: +00:00
+GTID_MODE: ON
+ENFORCE_GTID_CONSISTENCY: ON
+LOG_BIN: 1
+SERVER_ID: 1
+
+=== ALL 18 TABLES IN 'classfund' DATABASE ===
+- accounts
+- alembic_version
+- audit_logs
+- bank_accounts
+- campaign_members
+- chat_messages
+- collection_campaigns
+- extracted_transactions
+- idempotency_keys
+- ledger_entries
+- messages
+- payment_matches
+- recall_tokens
+- revoked_tokens
+- students
+- transactions
+- uploads
+- users
+- worker_status
+
+=== TABLE ENGINES AND ROW FORMATS ===
+accounts: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+alembic_version: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+audit_logs: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+bank_accounts: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+campaign_members: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+chat_messages: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+collection_campaigns: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+extracted_transactions: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+idempotency_keys: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+ledger_entries: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+messages: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+payment_matches: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+recall_tokens: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+revoked_tokens: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+students: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+transactions: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+uploads: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+users: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+worker_status: ENGINE=InnoDB, ROW_FORMAT=Dynamic, COLLATION=utf8mb4_unicode_ci
+
+=== ALL 29 FOREIGN KEYS ===
+Total Foreign Keys: 29
+audit_logs.actor_id -> users.id (audit_logs_ibfk_1)
+campaign_members.campaign_id -> collection_campaigns.id (campaign_members_ibfk_1)
+campaign_members.student_id -> students.id (campaign_members_ibfk_2)
+chat_messages.sender_id -> users.id (chat_messages_ibfk_1)
+chat_messages.ledger_entry_id -> ledger_entries.id (chat_messages_ibfk_2)
+extracted_transactions.upload_id -> uploads.id (extracted_transactions_ibfk_1)
+extracted_transactions.bank_account_id -> bank_accounts.id (extracted_transactions_ibfk_2)
+extracted_transactions.campaign_id -> collection_campaigns.id (extracted_transactions_ibfk_3)
+extracted_transactions.student_id -> students.id (extracted_transactions_ibfk_4)
+extracted_transactions.reviewed_by -> users.id (extracted_transactions_ibfk_5)
+ledger_entries.transaction_id -> transactions.id (ledger_entries_ibfk_1)
+ledger_entries.upload_id -> uploads.id (ledger_entries_ibfk_2)
+ledger_entries.created_by -> users.id (ledger_entries_ibfk_3)
+ledger_entries.original_entry_id -> ledger_entries.id (ledger_entries_ibfk_4)
+messages.sender_id -> users.id (messages_ibfk_1)
+messages.transaction_id -> transactions.id (messages_ibfk_2)
+messages.worker_id -> worker_status.worker_id (messages_ibfk_3)
+payment_matches.transaction_id -> transactions.id (payment_matches_ibfk_1)
+payment_matches.campaign_id -> collection_campaigns.id (payment_matches_ibfk_2)
+payment_matches.student_id -> students.id (payment_matches_ibfk_3)
+recall_tokens.message_id -> messages.id (recall_tokens_ibfk_1)
+revoked_tokens.user_id -> users.id (revoked_tokens_ibfk_1)
+transactions.account_id -> accounts.id (transactions_ibfk_1)
+transactions.bank_account_id -> bank_accounts.id (transactions_ibfk_2)
+transactions.upload_id -> uploads.id (transactions_ibfk_3)
+transactions.created_by -> users.id (transactions_ibfk_4)
+transactions.message_id -> messages.id (transactions_ibfk_5)
+uploads.uploaded_by -> users.id (uploads_ibfk_1)
+worker_status.current_job_id -> messages.id (worker_status_ibfk_1)

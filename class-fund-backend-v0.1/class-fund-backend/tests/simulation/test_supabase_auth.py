@@ -114,13 +114,16 @@ class TestRoleAuthorization:
         response = test_client.get("/api/v1/admin/stats", headers=get_owner_headers())
         assert response.status_code != 403
     
-    def test_review_routes_require_owner_or_moderator(self):
-        """Test review routes reject unauthorized roles.
-        
-        SKIPPED: The /internal/review endpoint has a bug in the codebase 
-        (ExtractedTransaction.created_at column doesn't exist).
-        """
-        pytest.skip("Review endpoint has bug: ExtractedTransaction.created_at column doesn't exist")
+    def test_review_routes_require_owner_or_moderator(self, test_client: TestClient, test_user_owner: User, test_user_member: User, test_user_public: User):
+        """Test review routes reject unauthorized roles."""
+        response = test_client.get("/api/v1/internal/review", headers=get_member_headers())
+        assert response.status_code == 403
+
+        response = test_client.get("/api/v1/internal/review", headers=get_public_headers())
+        assert response.status_code == 403
+
+        response = test_client.get("/api/v1/internal/review", headers=get_owner_headers())
+        assert response.status_code == 200
     
     def test_member_routes_accessible_to_member(self, test_client: TestClient, test_user_member: User):
         """Test member routes accessible to MEMBER role."""

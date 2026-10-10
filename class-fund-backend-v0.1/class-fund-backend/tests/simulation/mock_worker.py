@@ -70,20 +70,23 @@ class WorkerSimulator:
     def upsert_worker_status(self, db: Session, status: str, current_job_id: Optional[str] = None):
         """Update worker status in database."""
         now = datetime.now(timezone.utc)
-        db.execute(text("""
-            INSERT INTO worker_status (worker_id, status, last_heartbeat, last_processed_at, current_job_id, worker_metadata)
-            VALUES (:worker_id, :status, :now, :now, :job_id, '{}')
-            ON CONFLICT (worker_id) DO UPDATE SET
-                status = :status,
-                last_heartbeat = :now,
-                last_processed_at = COALESCE(:job_id, worker_status.last_processed_at),
-                current_job_id = :job_id
-        """), {
-            "worker_id": self.worker_id,
-            "status": status,
-            "now": now,
-            "job_id": current_job_id
-        })
+        ws = db.get(WorkerStatus, self.worker_id)
+        if ws:
+            ws.status = status
+            ws.last_heartbeat = now
+            if current_job_id:
+                ws.last_processed_at = now
+            ws.current_job_id = current_job_id
+        else:
+            ws = WorkerStatus(
+                worker_id=self.worker_id,
+                status=status,
+                last_heartbeat=now,
+                last_processed_at=now if current_job_id else None,
+                current_job_id=current_job_id,
+                worker_metadata={},
+            )
+            db.add(ws)
         db.commit()
         
         # Update simulation config

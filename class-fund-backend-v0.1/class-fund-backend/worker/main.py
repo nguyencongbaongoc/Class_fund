@@ -1,4 +1,4 @@
-"""Supabase-backed persistent worker for message processing."""
+"""Persistent worker for message processing with Redis Pub/Sub events."""
 from __future__ import annotations
 
 import os
@@ -6,31 +6,67 @@ import signal
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
+import json
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
+from redis.asyncio import Redis, ConnectionPool
 
 from app.core.config import get_settings
 from app.models.models import (
     Account, BankAccount, ExtractedTransaction, LedgerSource, LedgerType,
-    Message, MessageStatus, Transaction, Upload, UploadStatus
+    Message, MessageStatus, Transaction, Upload, UploadStatus, WorkerStatus
 )
 from app.services.ledger import verify_and_post_from_ai, ProcessingResult
 from ai.duplicate.service import DuplicateDetector
 
 
 class Worker:
-    def __init__(self, worker_id: str, database_url: str, lease_duration_seconds: int = 300):
+    def __init__(self, worker_id: str, database_url: str, lease_duration_seconds: int = 300,
+                 redis_url: Optional[str] = None):
         self.worker_id = worker_id
         self.database_url = database_url
         self.lease_duration_seconds = lease_duration_seconds
+        self.redis_url = redis_url or "redis://redis:6379/0"
         self.running = False
         self.duplicate_loading_failed = False
         self.duplicate_detector = None
         self.engine = create_engine(database_url, future=True, pool_size=5, max_overflow=10)
         self.Session = sessionmaker(bind=self.engine)
+        self._redis_pool: Optional[ConnectionPool] = None
+        self._redis: Optional[Redis] = None
+        self._redis_initialized = False
+        
+    async def _init_redis(self):
+        """Initialize Redis connection pool."""
+        if self._redis_initialized:
+            return
+        self._redis_pool = ConnectionPool.from_url(
+            self.redis_url,
+            decode_responses=True,
+            max_connections=10
+        )
+        self._redis = Redis(connection_pool=self._redis_pool)
+        self._redis_initialized = True
+    
+    async def _publish_event(self, channel: str, event_type: str, payload: dict):
+        """Publish event to Redis Pub/Sub."""
+        if not self._redis_initialized:
+            await self._init_redis()
+        
+        event = {
+            "type": event_type,
+            "payload": payload,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "worker_id": self.worker_id
+        }
+        
+        try:
+            await self._redis.publish(channel, json.dumps(event))
+        except Exception as e:
+            print(f"Failed to publish event to {channel}: {e}")
         
     def startup(self):
         """Initialize worker: reclaim stale leases, load duplicate data, register status."""
@@ -90,51 +126,46 @@ class Worker:
     def upsert_worker_status(self, status: str, current_job_id: Optional[str] = None):
         """Update worker status in database."""
         with self.Session() as db:
-            db.execute(text("""
-                INSERT INTO worker_status (worker_id, status, last_heartbeat, last_processed_at, current_job_id, metadata)
-                VALUES (:worker_id, :status, :now, :now, :job_id, '{}')
-                ON CONFLICT (worker_id) DO UPDATE SET
-                    status = :status,
-                    last_heartbeat = :now,
-                    last_processed_at = COALESCE(:job_id, worker_status.last_processed_at),
-                    current_job_id = :job_id
-            """), {
-                "worker_id": self.worker_id,
-                "status": status,
-                "now": datetime.now(timezone.utc),
-                "job_id": current_job_id
-            })
+            now = datetime.now(timezone.utc)
+            ws = db.get(WorkerStatus, self.worker_id)
+            if ws:
+                ws.status = status
+                ws.last_heartbeat = now
+                if current_job_id:
+                    ws.last_processed_at = now
+                ws.current_job_id = current_job_id
+            else:
+                ws = WorkerStatus(
+                    worker_id=self.worker_id,
+                    status=status,
+                    last_heartbeat=now,
+                    last_processed_at=now if current_job_id else None,
+                    current_job_id=current_job_id,
+                    worker_metadata={},
+                )
+                db.add(ws)
             db.commit()
             
     def claim_next_message(self) -> Optional[Message]:
         """Atomically claim the next pending message using FOR UPDATE SKIP LOCKED."""
         with self.Session() as db:
             now = datetime.now(timezone.utc)
-            lease_expires = now.replace(second=now.second + self.lease_duration_seconds)
-            
-            # Atomic claim with lease
-            result = db.execute(text("""
-                UPDATE messages
-                SET status = 'processing',
-                    worker_id = :worker_id,
-                    claimed_at = :now,
-                    lease_expires_at = :lease_expires
-                WHERE id = (
-                    SELECT id FROM messages
-                    WHERE status = 'pending'
-                    ORDER BY created_at
-                    FOR UPDATE SKIP LOCKED
-                    LIMIT 1
-                )
-                RETURNING *
-            """), {
-                "worker_id": self.worker_id,
-                "now": now,
-                "lease_expires": lease_expires
-            }).mappings().first()
-            
-            if result:
-                return db.get(Message, result["id"])
+            lease_expires = now + timedelta(seconds=self.lease_duration_seconds)
+            msg = db.execute(
+                select(Message)
+                .where(Message.status == MessageStatus.PENDING.value)
+                .order_by(Message.created_at)
+                .with_for_update(skip_locked=True)
+                .limit(1)
+            ).scalars().first()
+            if msg:
+                msg.status = MessageStatus.PROCESSING.value
+                msg.worker_id = self.worker_id
+                msg.claimed_at = now
+                msg.lease_expires_at = lease_expires
+                db.commit()
+                db.refresh(msg)
+                return msg
             return None
             
     def process_message(self, message: Message):

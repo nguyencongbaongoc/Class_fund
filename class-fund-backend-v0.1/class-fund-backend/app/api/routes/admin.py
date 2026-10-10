@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import Optional, Literal
 from fastapi import APIRouter, Depends, Query, HTTPException
 from starlette.responses import StreamingResponse
@@ -76,7 +77,7 @@ def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(
     now = datetime.now(timezone.utc)
     worker_online_count = sum(
         1 for w in workers 
-        if w.last_heartbeat and (now - w.last_heartbeat).total_seconds() < 30
+        if w.last_heartbeat and (now - (w.last_heartbeat if w.last_heartbeat.tzinfo else w.last_heartbeat.replace(tzinfo=timezone.utc))).total_seconds() < 30
     )
     
     queue_pending_count = db.execute(
@@ -518,7 +519,14 @@ def get_system_health(db: Session = Depends(get_db), current_user: User = Depend
                 latency_ms=None,
             ))
         else:
-            online = sum(1 for w in workers if w.last_heartbeat and (checked_at - w.last_heartbeat).total_seconds() < 30)
+            def is_online(w):
+                if not w.last_heartbeat:
+                    return False
+                hb = w.last_heartbeat
+                if hb.tzinfo is None:
+                    hb = hb.replace(tzinfo=timezone.utc)
+                return (checked_at - hb).total_seconds() < 30
+            online = sum(1 for w in workers if is_online(w))
             worker_latency = int((datetime.now(timezone.utc) - worker_start).total_seconds() * 1000)
             components.append(ComponentHealth(
                 name="Worker Pool",

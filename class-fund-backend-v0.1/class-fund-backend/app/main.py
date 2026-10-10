@@ -7,8 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import auth, campaigns, chat, fund, health, uploads, messages, vision, review
 from app.api.routes import ai_internal, public, admin, realtime
 from app.core.config import get_settings
+from app.core.websocket import manager
 from app.db.init_db import init_db
-from app.services.realtime import manager
 
 
 @asynccontextmanager

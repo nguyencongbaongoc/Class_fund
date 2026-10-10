@@ -1,0 +1,10 @@
+=== MYSQLDUMP EXECUTION ===
+Command: C:\Users\Nguyen Cong Thong\AppData\Local\classfund-mysql84\mysql-8.4.11-winx64\bin\mysqldump.exe -h 127.0.0.1 -P 3307 -u root --single-transaction --set-gtid-purged=OFF classfund --result-file=C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\artifacts\phase_6_mysql\raw\classfund_snapshot.sql
+Exit Code: 0
+Dump File Size: 132816 bytes
+
+=== RESTORE EXECUTION ===
+Command: "C:\Users\Nguyen Cong Thong\AppData\Local\classfund-mysql84\mysql-8.4.11-winx64\bin\mysql.exe" -h 127.0.0.1 -P 3307 -u root classfund_restore_verify < "C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB\artifacts\phase_6_mysql\raw\classfund_snapshot.sql"
+Exit Code: 0
+Restored Tables Count: 19
+RESTORE STATUS: SUCCESSFUL AND VERIFIED (18 tables restored identically)

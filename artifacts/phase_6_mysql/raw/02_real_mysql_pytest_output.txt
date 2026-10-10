@@ -1,0 +1,67 @@
+=== PHASE 6 MYSQL QUALIFICATION TESTS (tests/test_mysql_qualification.py) ===
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-8.4.2, pluggy-1.6.0 -- C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0, mock-3.15.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 16 items
+
+tests\test_mysql_qualification.py::test_01_mysql_version_engine_charset PASSED [  6%]
+tests\test_mysql_qualification.py::test_02_all_18_tables_and_columns_exist PASSED [ 12%]
+tests\test_mysql_qualification.py::test_03_financial_decimal_precision PASSED [ 18%]
+tests\test_mysql_qualification.py::test_04_ledger_immutability_and_balance PASSED [ 25%]
+tests\test_mysql_qualification.py::test_05_compensating_revert_and_original_linkage PASSED [ 31%]
+tests\test_mysql_qualification.py::test_06_ai_gatekeeper_and_approval_gate PASSED [ 37%]
+tests\test_mysql_qualification.py::test_07_idempotency_duplicate_request_prevention PASSED [ 43%]
+tests\test_mysql_qualification.py::test_08_concurrent_worker_claiming_skip_locked PASSED [ 50%]
+tests\test_mysql_qualification.py::test_09_deadlock_detection_and_recovery PASSED [ 56%]
+tests\test_mysql_qualification.py::test_10_auth_replacement_and_revoked_tokens PASSED [ 62%]
+tests\test_mysql_qualification.py::test_11_private_filesystem_storage_replacement PASSED [ 68%]
+tests\test_mysql_qualification.py::test_12_redis_pubsub_realtime PASSED  [ 75%]
+tests\test_mysql_qualification.py::test_13_three_machine_gtid_readiness PASSED [ 81%]
+tests\test_mysql_qualification.py::test_14_backup_and_restore PASSED     [ 87%]
+tests\test_mysql_qualification.py::test_15_live_gtid_replication_and_read_only_enforcement PASSED [ 93%]
+tests\test_mysql_qualification.py::test_16_controlled_promotion_and_failover PASSED [100%]
+
+============================== warnings summary ===============================
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 16 passed, 1 warning in 13.80s ========================
+
+
+=== FULL BACKEND TEST SUITE (pytest tests/) ===
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\Users\Nguyen Cong Thong\Desktop\CLASS_FUND_WEB
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0, mock-3.15.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 215 items
+
+tests\simulation\test_balance_reconciliation.py ........                 [  3%]
+tests\simulation\test_concurrency.py ............                        [  9%]
+tests\simulation\test_e2e.py .......s...........                         [ 18%]
+tests\simulation\test_failure_injection.py ............................. [ 31%]
+                                                                         [ 31%]
+tests\simulation\test_ledger_integrity.py ..............                 [ 38%]
+tests\simulation\test_ollama.py ...................................      [ 54%]
+tests\simulation\test_supabase_auth.py .......................           [ 65%]
+tests\simulation\test_worker.py ............................             [ 78%]
+tests\test_admin.py ...........                                          [ 83%]
+tests\test_financial_core.py ....                                        [ 85%]
+tests\test_idempotency.py ........                                       [ 88%]
+tests\test_mysql_qualification.py ................                       [ 96%]
+tests\test_recall.py ........                                            [100%]
+
+============================== warnings summary ===============================
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\Nguyen Cong Thong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 214 passed, 1 skipped, 1 warning in 31.03s ==================

@@ -6,7 +6,7 @@ from typing import Optional
 class Settings(BaseSettings):
     app_name: str = "Class Fund API"
     environment: str = "development"
-    database_url: str = "mysql+pymysql://classfund:classfund@localhost:3306/classfund?charset=utf8mb4"
+    database_url: str = "mysql+pymysql://classfund:classfund@127.0.0.1:3306/classfund?charset=utf8mb4"
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60

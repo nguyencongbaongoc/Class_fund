@@ -1,13 +1,20 @@
+version: '3.8'
+
 services:
-  mysql:
+  # ============================================================
+  # MySQL 8.4 Primary (Source) - GTID Replication
+  # ============================================================
+  mysql-primary:
     image: mysql:8.4
     platform: linux/amd64
-    container_name: classfund_mysql
+    container_name: classfund_mysql_primary
     environment:
       MYSQL_DATABASE: classfund
       MYSQL_USER: classfund
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-classfund}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_REPLICATION_USER: ${MYSQL_REPLICATION_USER:-repl_user}
+      MYSQL_REPLICATION_PASSWORD: ${MYSQL_REPLICATION_PASSWORD:-repl_password}
       TZ: UTC
     command:
       - --character-set-server=utf8mb4
@@ -19,11 +26,20 @@ services:
       - --innodb-flush-log-at-trx-commit=1
       - --max-connections=200
       - --innodb-file-per-table=ON
+      - --server-id=1
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --binlog-format=ROW
+      - --log-bin=mysql-bin
+      - --sync-binlog=1
+      - --binlog-row-image=FULL
+      - --log-replica-updates=ON
     ports:
       - "3306:3306"
     volumes:
-      - classfund_mysql_data:/var/lib/mysql
+      - classfund_mysql_primary_data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d
+      - ./mysql/scripts:/docker-entrypoint-initdb.d/scripts:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "classfund", "-p${MYSQL_PASSWORD:-classfund}"]
       interval: 10s
@@ -39,16 +55,79 @@ services:
         reservations:
           memory: 256M
 
+  # ============================================================
+  # MySQL 8.4 Replica - GTID Replication
+  # ============================================================
+  mysql-replica:
+    image: mysql:8.4
+    platform: linux/amd64
+    container_name: classfund_mysql_replica
+    environment:
+      MYSQL_DATABASE: classfund
+      MYSQL_USER: classfund
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-classfund}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_REPLICATION_USER: ${MYSQL_REPLICATION_USER:-repl_user}
+      MYSQL_REPLICATION_PASSWORD: ${MYSQL_REPLICATION_PASSWORD:-repl_password}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+      - --innodb-buffer-pool-size=256M
+      - --innodb-log-file-size=64M
+      - --innodb-flush-log-at-trx-commit=1
+      - --max-connections=200
+      - --innodb-file-per-table=ON
+      - --server-id=2
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --binlog-format=ROW
+      - --log-bin=mysql-bin
+      - --sync-binlog=1
+      - --binlog-row-image=FULL
+      - --log-replica-updates=ON
+      - --read-only=ON
+      - --super-read-only=ON
+      - --relay-log=mysql-relay-bin
+    ports:
+      - "3307:3306"
+    volumes:
+      - classfund_mysql_replica_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+      - ./mysql/scripts:/docker-entrypoint-initdb.d/scripts:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "classfund", "-p${MYSQL_PASSWORD:-classfund}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - classfund_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+
+  # ============================================================
+  # Redis 7 - Pub/Sub Broker for Real-time
+  # ============================================================
   redis:
     image: redis:7-alpine
     container_name: classfund_redis
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-redis_password}
     ports:
       - "6379:6379"
     volumes:
       - classfund_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -62,14 +141,17 @@ services:
         reservations:
           memory: 64M
 
+  # ============================================================
+  # Backend API (FastAPI)
+  # ============================================================
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: classfund_backend
     environment:
-      DATABASE_URL: mysql+pymysql://classfund:${MYSQL_PASSWORD:-classfund}@mysql:3306/classfund?charset=utf8mb4
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: mysql+pymysql://classfund:${MYSQL_PASSWORD:-classfund}@mysql-primary:3306/classfund?charset=utf8mb4
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_MINUTES: 60
@@ -85,7 +167,7 @@ services:
       - ./storage/uploads:/app/storage/uploads
       - ./app:/app/app
     depends_on:
-      mysql:
+      mysql-primary:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -104,14 +186,17 @@ services:
         reservations:
           memory: 512M
 
+  # ============================================================
+  # Worker (Background Message Processing)
+  # ============================================================
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
     container_name: classfund_worker
     environment:
-      DATABASE_URL: mysql+pymysql://classfund:${MYSQL_PASSWORD:-classfund}@mysql:3306/classfund?charset=utf8mb4
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: mysql+pymysql://classfund:${MYSQL_PASSWORD:-classfund}@mysql-primary:3306/classfund?charset=utf8mb4
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       AI_CONFIDENCE_THRESHOLD: 0.90
       ENVIRONMENT: development
@@ -124,7 +209,7 @@ services:
       - ./app:/app/app
       - ./worker:/app/worker
     depends_on:
-      mysql:
+      mysql-primary:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -139,13 +224,43 @@ services:
         reservations:
           memory: 512M
 
+  # ============================================================
+  # Frontend (Vite Dev Server)
+  # ============================================================
+  frontend:
+    build:
+      context: ../classfund/classfund
+      dockerfile: Dockerfile.dev
+    container_name: classfund_frontend
+    environment:
+      VITE_API_URL: http://localhost:8000/api/v1
+      VITE_WS_URL: ws://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../classfund/classfund/src:/app/src
+      - ../classfund/classfund/package.json:/app/package.json
+      - ../classfund/classfund/vite.config.ts:/app/vite.config.ts
+    depends_on:
+      - backend
+    networks:
+      - classfund_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
 networks:
   classfund_network:
     driver: bridge
     name: classfund_network
 
 volumes:
-  classfund_mysql_data:
+  classfund_mysql_primary_data:
+    driver: local
+  classfund_mysql_replica_data:
     driver: local
   classfund_redis_data:
     driver: local

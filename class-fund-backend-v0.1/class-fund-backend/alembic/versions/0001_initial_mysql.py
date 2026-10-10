@@ -10,13 +10,15 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    conn.execute(sa.text("SET FOREIGN_KEY_CHECKS = 0;"))
     # revoked_tokens
     op.create_table(
         "revoked_tokens",
         sa.Column("jti", sa.String(36), primary_key=True),
         sa.Column("user_id", sa.String(36), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("expires_at", DATETIME(6), nullable=False),
-        sa.Column("revoked_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("expires_at", DATETIME(fsp=6), nullable=False),
+        sa.Column("revoked_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
@@ -30,7 +32,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(255), nullable=False, unique=True),
         sa.Column("password_hash", sa.String(255), nullable=False),
         sa.Column("role", VARCHAR(20), nullable=False, server_default="MEMBER"),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         sa.CheckConstraint("role IN ('OWNER_TREASURER','MODERATOR','MEMBER','PUBLIC')", name="ck_users_role"),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
@@ -46,7 +48,7 @@ def upgrade() -> None:
         sa.Column("currency", sa.String(8), nullable=False, server_default="VND"),
         sa.Column("opening_balance", sa.Numeric(18, 2), nullable=False, server_default="0.00"),
         sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
@@ -77,7 +79,7 @@ def upgrade() -> None:
         sa.Column("storage_path", sa.String(500), nullable=False),
         sa.Column("uploaded_by", sa.String(36), sa.ForeignKey("users.id"), nullable=True),
         sa.Column("uploader_name", sa.String(120), nullable=False),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         sa.Column("status", VARCHAR(20), nullable=False, server_default="PENDING"),
         sa.CheckConstraint("status IN ('PENDING','PROCESSING','NEEDS_REVIEW','VERIFIED','REJECTED','DUPLICATE')", name="ck_uploads_status"),
         mysql_charset="utf8mb4",
@@ -106,8 +108,8 @@ def upgrade() -> None:
         sa.Column("title", sa.String(200), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("expected_amount", sa.Numeric(18, 2), nullable=False),
-        sa.Column("start_at", DATETIME(6), nullable=True),
-        sa.Column("end_at", DATETIME(6), nullable=True),
+        sa.Column("start_at", DATETIME(fsp=6), nullable=True),
+        sa.Column("end_at", DATETIME(fsp=6), nullable=True),
         sa.Column("status", VARCHAR(20), nullable=False, server_default="DRAFT"),
         sa.CheckConstraint("status IN ('DRAFT','OPEN','CLOSED')", name="ck_campaigns_status"),
         mysql_charset="utf8mb4",
@@ -139,20 +141,20 @@ def upgrade() -> None:
         sa.Column("sender_name", sa.String(160), nullable=True),
         sa.Column("bank_name", sa.String(120), nullable=True),
         sa.Column("bank_account_id", sa.String(36), sa.ForeignKey("bank_accounts.id"), nullable=True),
-        sa.Column("transaction_time", DATETIME(6), nullable=True),
+        sa.Column("transaction_time", DATETIME(fsp=6), nullable=True),
         sa.Column("confidence", sa.Numeric(5, 4), nullable=True),
         sa.Column("raw_ocr", sa.Text(), nullable=True),
         sa.Column("campaign_id", sa.String(36), sa.ForeignKey("collection_campaigns.id"), nullable=True),
         sa.Column("student_id", sa.String(36), sa.ForeignKey("students.id"), nullable=True),
         sa.Column("status", VARCHAR(20), nullable=False, server_default="PROCESSING"),
         sa.CheckConstraint("status IN ('PENDING','PROCESSING','NEEDS_REVIEW','VERIFIED','REJECTED','DUPLICATE')", name="ck_extracted_status"),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         sa.Column("field_confidences", JSON, nullable=True),
         sa.Column("extraction_method", sa.String(50), nullable=True),
         sa.Column("source_image_id", sa.String(36), nullable=True),
         sa.Column("currency", sa.String(8), nullable=True),
         sa.Column("reviewed_by", sa.String(36), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("reviewed_at", DATETIME(6), nullable=True),
+        sa.Column("reviewed_at", DATETIME(fsp=6), nullable=True),
         sa.Column("review_notes", sa.Text(), nullable=True),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
@@ -176,8 +178,8 @@ def upgrade() -> None:
         sa.CheckConstraint("status IN ('VERIFIED','REVERTED')", name="ck_transactions_status"),
         sa.Column("upload_id", sa.String(36), sa.ForeignKey("uploads.id"), nullable=True),
         sa.Column("created_by", sa.String(36), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
-        sa.Column("effective_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("effective_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         sa.Column("note", sa.Text(), nullable=True),
         sa.Column("message_id", sa.String(36), sa.ForeignKey("messages.id"), nullable=True, index=True),
         sa.UniqueConstraint("bank_account_id", "transaction_code", name="uq_bank_transaction_code"),
@@ -202,8 +204,8 @@ def upgrade() -> None:
         sa.CheckConstraint("status IN ('VERIFIED','REVERTED')", name="ck_ledger_status"),
         sa.Column("upload_id", sa.String(36), sa.ForeignKey("uploads.id"), nullable=True),
         sa.Column("created_by", sa.String(36), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
-        sa.Column("effective_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("effective_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         sa.Column("original_entry_id", sa.String(36), sa.ForeignKey("ledger_entries.id"), nullable=True),
         sa.Column("note", sa.Text(), nullable=True),
         mysql_charset="utf8mb4",
@@ -219,7 +221,7 @@ def upgrade() -> None:
         sa.Column("request_fingerprint", sa.String(64), nullable=False),
         sa.Column("response_status", sa.Integer(), nullable=False),
         sa.Column("response_body", JSON, nullable=False),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
@@ -236,7 +238,7 @@ def upgrade() -> None:
         sa.Column("before_data", JSON, nullable=True),
         sa.Column("after_data", JSON, nullable=True),
         sa.Column("ip", sa.String(64), nullable=True),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
@@ -251,7 +253,7 @@ def upgrade() -> None:
         sa.Column("student_id", sa.String(36), sa.ForeignKey("students.id"), nullable=False),
         sa.Column("confidence", sa.Numeric(5, 4), nullable=False),
         sa.Column("matched_by", sa.String(32), nullable=False, server_default="AI"),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
@@ -276,10 +278,10 @@ def upgrade() -> None:
         sa.Column("transaction_id", sa.String(36), sa.ForeignKey("transactions.id"), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("retry_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
-        sa.Column("claimed_at", DATETIME(6), nullable=True),
-        sa.Column("lease_expires_at", DATETIME(6), nullable=True),
-        sa.Column("processed_at", DATETIME(6), nullable=True),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("claimed_at", DATETIME(fsp=6), nullable=True),
+        sa.Column("lease_expires_at", DATETIME(fsp=6), nullable=True),
+        sa.Column("processed_at", DATETIME(fsp=6), nullable=True),
         sa.Column("worker_id", sa.String(36), sa.ForeignKey("worker_status.worker_id"), nullable=True),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
@@ -287,19 +289,12 @@ def upgrade() -> None:
     )
     
     # Partial indexes (MySQL 8.0.13+)
-    op.create_index(
-        "ix_messages_status_created", "messages", ["status", "created_at"],
-        mysql_where=sa.text("status = 'pending'")
-    )
+    op.create_index("ix_messages_status_created", "messages", ["status", "created_at"])
     op.create_index(
         "ix_messages_conversation_status_created", "messages", 
         ["conversation_id", "status", "created_at"]
     )
-    op.create_index(
-        "ix_messages_processing_lease", "messages", 
-        ["status", "lease_expires_at"],
-        mysql_where=sa.text("status = 'processing'")
-    )
+    op.create_index("ix_messages_processing_lease", "messages", ["status", "lease_expires_at"])
     op.create_index("ix_messages_worker_id", "messages", ["worker_id"])
 
     # worker_status
@@ -308,10 +303,10 @@ def upgrade() -> None:
         sa.Column("worker_id", sa.String(36), primary_key=True),
         sa.Column("status", sa.String(20), nullable=False, server_default="offline"),
         sa.Column("model_name", sa.String(100), nullable=True),
-        sa.Column("last_heartbeat", DATETIME(6), nullable=True),
-        sa.Column("last_processed_at", DATETIME(6), nullable=True),
+        sa.Column("last_heartbeat", DATETIME(fsp=6), nullable=True),
+        sa.Column("last_processed_at", DATETIME(fsp=6), nullable=True),
         sa.Column("current_job_id", sa.String(36), sa.ForeignKey("messages.id"), nullable=True),
-        sa.Column("metadata", JSON, nullable=False, server_default="{}"),
+        sa.Column("metadata", JSON, nullable=False, server_default=sa.text("('{}')")),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
@@ -323,10 +318,10 @@ def upgrade() -> None:
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("message_id", sa.String(36), sa.ForeignKey("messages.id"), nullable=False, unique=True),
         sa.Column("token_hash", sa.String(64), nullable=False),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
-        sa.Column("expires_at", DATETIME(6), nullable=True),
-        sa.Column("used_at", DATETIME(6), nullable=True),
-        sa.Column("revoked_at", DATETIME(6), nullable=True),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("expires_at", DATETIME(fsp=6), nullable=True),
+        sa.Column("used_at", DATETIME(fsp=6), nullable=True),
+        sa.Column("revoked_at", DATETIME(fsp=6), nullable=True),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
@@ -343,22 +338,20 @@ def upgrade() -> None:
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("attachment_id", sa.String(36), nullable=True),
         sa.Column("ledger_entry_id", sa.String(36), sa.ForeignKey("ledger_entries.id"), nullable=True),
-        sa.Column("created_at", DATETIME(6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
+        sa.Column("created_at", DATETIME(fsp=6), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(6)")),
         mysql_charset="utf8mb4",
         mysql_collate="utf8mb4_unicode_ci",
         mysql_engine="InnoDB",
     )
+    conn.execute(sa.text("SET FOREIGN_KEY_CHECKS = 1;"))
 
 
 def downgrade() -> None:
+    conn = op.get_bind()
+    conn.execute(sa.text("SET FOREIGN_KEY_CHECKS = 0;"))
     op.drop_table("chat_messages")
-    op.drop_index("ix_recall_tokens_message_id", table_name="recall_tokens")
     op.drop_table("recall_tokens")
     op.drop_table("worker_status")
-    op.drop_index("ix_messages_worker_id", table_name="messages")
-    op.drop_index("ix_messages_processing_lease", table_name="messages")
-    op.drop_index("ix_messages_conversation_status_created", table_name="messages")
-    op.drop_index("ix_messages_status_created", table_name="messages")
     op.drop_table("messages")
     op.drop_table("payment_matches")
     op.drop_table("audit_logs")
@@ -372,6 +365,7 @@ def downgrade() -> None:
     op.drop_table("uploads")
     op.drop_table("bank_accounts")
     op.drop_table("accounts")
-    op.drop_index("ix_users_email", table_name="users")
     op.drop_table("users")
     op.drop_table("revoked_tokens")
+    conn.execute(sa.text("SET FOREIGN_KEY_CHECKS = 1;"))
+
