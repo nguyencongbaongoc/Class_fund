@@ -54,37 +54,37 @@ Hệ thống tuân thủ nghiêm ngặt 5 bất biến tài chính được ki�
 ```mermaid
 flowchart TD
     subgraph ClientLayer ["Lớp Người dùng (Browser)"]
-        Guest["Khách / Học sinh / Phụ huynh<br/>(Guest Chat - Không cần đăng nhập)"]
-        Admin["Thủ quỹ / Ban cán sự<br/>(Admin Dashboard & Review Queue)"]
+        Guest["Khách / Học sinh / Phụ huynh<br/>(Guest Chat - Không cần đăng nhập)"];
+        Admin["Thủ quỹ / Ban cán sự<br/>(Admin Dashboard & Review Queue)"];
     end
 
     subgraph PresentationLayer ["Giao diện Frontend (Port 3000 / 5173)"]
-        ViteUI["React 19 + Vite UI<br/>- GuestChatPage (Upload & Token Recall)<br/>- AdminDashboardView & ReviewQueue"]
+        ViteUI["React 19 + Vite UI<br/>- GuestChatPage (Upload & Token Recall)<br/>- AdminDashboardView & ReviewQueue"];
     end
 
     subgraph CoreLayer ["Lớp Backend & AI Processing (Native Windows)"]
-        FastAPI["FastAPI Core API (Port 8000)<br/>- /api/v1/messages<br/>- /api/v1/health/deep<br/>- /internal/review"]
-        RedisPubSub["Redis / Memurai (Port 6379)<br/>Cache, Hàng đợi & WebSocket Pub/Sub"]
-        Worker["Background AI Worker (worker/main.py)<br/>Claim Jobs qua FOR UPDATE SKIP LOCKED"]
-        OllamaEngine["Ollama Service (Port 11434)<br/>- qwen2.5vl:3b (Vision OCR)<br/>- qwen3.5:4b (Text Fallback)"]
+        FastAPI["FastAPI Core API (Port 8000)<br/>- /api/v1/messages<br/>- /api/v1/health/deep<br/>- /internal/review"];
+        RedisPubSub["Redis / Memurai (Port 6379)<br/>Cache, Hàng đợi & WebSocket Pub/Sub"];
+        Worker["Background AI Worker (worker/main.py)<br/>Claim Jobs qua FOR UPDATE SKIP LOCKED"];
+        OllamaEngine["Ollama Service (Port 11434)<br/>- qwen2.5vl:3b (Vision OCR)<br/>- qwen3.5:4b (Text Fallback)"];
     end
 
     subgraph DataLayer ["Lớp Dữ liệu Bất biến (MySQL 8.4/9.x - Port 3306)"]
-        DB[("MySQL Database: classfund<br/>- uploads (pHash, SHA256)<br/>- messages (Lease 300s)<br/>- transactions & ledger_entries (DECIMAL 18,2)<br/>- idempotency_keys & audit_logs")]
-        Storage["Thư mục lưu trữ tệp cục bộ<br/>(./uploads & ./storage/uploads)"]
+        DB[("MySQL Database: classfund<br/>- uploads: pHash, SHA256<br/>- messages: Lease 300s<br/>- transactions & ledger_entries: DECIMAL 18,2<br/>- idempotency_keys & audit_logs")];
+        Storage["Thư mục lưu trữ tệp cục bộ<br/>(./uploads & ./storage/uploads)"];
     end
 
-    Guest -->|1. Gửi ảnh biên lai + Lời nhắn| ViteUI
-    Admin -->|Quản lý & Duyệt thủ công| ViteUI
-    ViteUI -->|2. HTTP POST /api/v1/messages| FastAPI
-    FastAPI -->|3. Lưu ảnh & Tạo tin nhắn (Pending)| DB
-    FastAPI -->|Lưu tệp ảnh| Storage
-    FastAPI -->|Bắn tín hiệu sự kiện| RedisPubSub
-    Worker -->|4. Quét job (SKIP LOCKED)| DB
-    Worker -->|5. Đọc ảnh & Suy luận bóc tách| OllamaEngine
-    Worker -->|6. verify_and_post_from_ai()| DB
-    Worker -->|7. Cập nhật tiến độ realtime| RedisPubSub
-    RedisPubSub -->|8. WebSocket / Polling Stream| ViteUI
+    Guest -->|1. Gửi ảnh biên lai + Lời nhắn| ViteUI;
+    Admin -->|Quản lý & Duyệt thủ công| ViteUI;
+    ViteUI -->|2. HTTP POST /api/v1/messages| FastAPI;
+    FastAPI -->|3. Lưu ảnh & Tạo tin nhắn Pending| DB;
+    FastAPI -->|Lưu tệp ảnh vật lý| Storage;
+    FastAPI -->|Bắn sự kiện realtime| RedisPubSub;
+    Worker -->|4. Quét job SKIP LOCKED| DB;
+    Worker -->|5. Đọc ảnh & Suy luận AI| OllamaEngine;
+    Worker -->|6. Ghi sổ verify_and_post_from_ai| DB;
+    Worker -->|7. Cập nhật tiến độ| RedisPubSub;
+    RedisPubSub -->|8. WebSocket / Polling Stream| ViteUI;
 ```
 
 ---
@@ -458,27 +458,27 @@ Quy trình chuyển giao toàn bộ dữ liệu dự án từ máy đang vận h
 flowchart LR
     subgraph MachineA ["MÁY A (Nguồn - Đóng gói)"]
         direction TB
-        A1["Chạy export_to_machine_b.bat"] --> A2["Rút cạn Worker & Đóng băng Sổ cái"]
-        A2 --> A3["Chụp Baseline tài chính<br/>(migration_baseline.json)"]
-        A3 --> A4["Xuất MySQL Dump chuẩn<br/>(--single-transaction --hex-blob)"]
-        A4 --> A5["Đóng gói uploads/, .env, dump & baseline<br/>➔ classfund_transfer_package.zip"]
+        A1["Chạy export_to_machine_b.bat"] --> A2["Rút cạn Worker & Đóng băng Sổ cái"];
+        A2 --> A3["Chụp Baseline tài chính<br/>(migration_baseline.json)"];
+        A3 --> A4["Xuất MySQL Dump chuẩn<br/>(--single-transaction --hex-blob)"];
+        A4 --> A5["Đóng gói uploads/, .env, dump & baseline<br/>➔ classfund_transfer_package.zip"];
     end
 
     subgraph TransferChannel ["VẬN CHUYỂN VẬT LÝ / MẠNG"]
-        T["Sao chép classfund_transfer_package.zip<br/>(Qua USB / Mạng LAN / Google Drive)"]
+        T["Sao chép classfund_transfer_package.zip<br/>(Qua USB / Mạng LAN / Google Drive)"];
     end
 
     subgraph MachineB ["MÁY B (Đích - Tiếp nhận & Khởi tạo)"]
         direction TB
-        B1["Đặt classfund_transfer_package.zip vào thư mục gốc"] --> B2["Chạy import_from_machine_a.bat"]
-        B2 --> B3["Tự động giải nén & Phục hồi uploads/, .env"]
-        B3 --> B4["Nạp SQL Dump vào MySQL cục bộ"]
-        B4 --> B5{"Đối soát Tài chính Nghiêm ngặt<br/>Sai số == 0.00 VND?"}
-        B5 -- "ĐÚNG (0.00 VND)" --> B6["Khởi động Hệ thống Máy B Sẵn sàng!"]
-        B5 -- "SAI (Có Drift)" --> B7["BÁO ĐỘNG ĐỎ & HỦY KHỞI ĐỘNG"]
+        B1["Đặt classfund_transfer_package.zip vào thư mục gốc"] --> B2["Chạy import_from_machine_a.bat"];
+        B2 --> B3["Tự động giải nén & Phục hồi uploads/, .env"];
+        B3 --> B4["Nạp SQL Dump vào MySQL cục bộ"];
+        B4 --> B5{"Đối soát Tài chính Nghiêm ngặt<br/>Sai số == 0.00 VND?"};
+        B5 -- "ĐÚNG (0.00 VND)" --> B6["Khởi động Hệ thống Máy B Sẵn sàng!"];
+        B5 -- "SAI (Có Drift)" --> B7["BÁO ĐỘNG ĐỎ & HỦY KHỞI ĐỘNG"];
     end
 
-    MachineA --> TransferChannel --> MachineB
+    MachineA --> TransferChannel --> MachineB;
 ```
 
 ---
