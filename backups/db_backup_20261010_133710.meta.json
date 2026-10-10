@@ -1,0 +1,12 @@
+{
+  "timestamp": "20261010_133710",
+  "backup_file": "C:\\Users\\Nguyen Cong Thong\\Desktop\\CLASS_FUND_WEB\\backups\\db_backup_20261010_133710.sql",
+  "sha256": "",
+  "file_size_bytes": 281983,
+  "accounts_count": 185,
+  "accounts_opening_balance_sum": "210000000005954457.48",
+  "ledger_count": 126,
+  "ledger_sum_vnd": "8925000.00",
+  "gtid_executed": "5e10d807-bfeb-11f1-9cc2-d8bbc13b2fc2:1-2667,\nf6f61fd0-c06e-11f1-ab28-d8bbc13b2fc2:1-23",
+  "status": "VERIFIED_SNAPSHOT"
+}

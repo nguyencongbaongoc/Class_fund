@@ -11,3 +11,4 @@ for port in [3306, 3308]:
         print(f"Configured repl_user on port {port}")
     except Exception as e:
         print(f"Error on {port}: {e}")
+

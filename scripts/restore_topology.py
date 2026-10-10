@@ -41,3 +41,4 @@ with conn_rep.cursor() as cur:
     print("3308 Replica_SQL_Running:", st.get("Replica_SQL_Running"))
     print("3308 Seconds_Behind_Source:", st.get("Seconds_Behind_Source"))
 conn_rep.close()
+

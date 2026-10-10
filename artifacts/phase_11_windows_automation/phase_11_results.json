@@ -1,0 +1,88 @@
+{
+  "phase": "Phase 11: Windows Batch Automation, One-Click Utilities & Cross-Machine Migration Pipeline",
+  "project": "CLASS_FUND_WEB",
+  "version": "1.1.0",
+  "release_tag": "v1.1.0-windows-automation",
+  "completion_timestamp": "2026-10-10T13:50:00Z",
+  "overall_verdict": "PHASE_11_COMPLETE",
+  "financial_invariants": {
+    "single_mutation_gateway": "verify_and_post_from_ai()",
+    "precision": "DECIMAL(18,2)",
+    "balance_divergence_vnd": 0.0,
+    "total_accounts_verified": 185,
+    "total_ledger_entries_verified": 126,
+    "total_ledger_balance_vnd": "8925000.00",
+    "balance_parity_matched": true,
+    "idempotency_key_format": "msg_{message_id}_v{content_hash}"
+  },
+  "workstreams": {
+    "workstream_a_environment_controls": {
+      "status": "PASSED",
+      "scripts": [
+        "scripts/windows/01_start_all.bat",
+        "scripts/windows/02_stop_all.bat",
+        "scripts/windows/07_health_check.bat"
+      ],
+      "utf8_encoding_enforced": true,
+      "worker_draining_grace_seconds": 5,
+      "health_probe_polling": true
+    },
+    "workstream_b_database_backup_restore": {
+      "status": "PASSED",
+      "scripts": [
+        "scripts/windows/03_db_backup.bat",
+        "scripts/windows/04_db_restore.bat",
+        "scripts/windows/08_reconcile_balance.bat"
+      ],
+      "helper_scripts": [
+        "scripts/restore_helper.py"
+      ],
+      "single_transaction_gtid": true,
+      "sha256_checksum_validated": true,
+      "retention_policy_limit": 7,
+      "restore_reconciliation_discrepancy_vnd": "0.00"
+    },
+    "workstream_c_cross_machine_migration": {
+      "status": "PASSED",
+      "scripts": [
+        "scripts/windows/05_export_machine_a.bat",
+        "scripts/windows/06_import_machine_b.bat"
+      ],
+      "helper_scripts": [
+        "scripts/reconcile_migration.py"
+      ],
+      "package_name": "classfund_transfer_package.zip",
+      "included_assets": [
+        "migration_dump.sql",
+        "migration_baseline.json",
+        ".env",
+        "uploads/"
+      ],
+      "baseline_reconciliation_matched": true,
+      "migration_discrepancy_vnd": "0.00"
+    },
+    "workstream_d_root_wrappers_and_docs": {
+      "status": "PASSED",
+      "root_launchers": [
+        "start.bat",
+        "stop.bat",
+        "backup.bat",
+        "export_to_machine_b.bat",
+        "import_from_machine_a.bat"
+      ],
+      "documentation": [
+        "docs/WINDOWS_AUTOMATION_GUIDE.md"
+      ]
+    }
+  },
+  "authoritative_artifacts": [
+    "artifacts/phase_11_windows_automation/00_phase11_preflight.md",
+    "artifacts/phase_11_windows_automation/01_scripts_architecture_spec.md",
+    "artifacts/phase_11_windows_automation/02_backup_restore_automation_report.md",
+    "artifacts/phase_11_windows_automation/03_cross_machine_migration_test_log.md",
+    "artifacts/phase_11_windows_automation/04_user_manual_verification.md",
+    "artifacts/phase_11_windows_automation/05_final_phase11_report.md",
+    "artifacts/phase_11_windows_automation/phase_11_results.json"
+  ]
+}
+

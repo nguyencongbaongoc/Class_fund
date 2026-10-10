@@ -120,3 +120,4 @@ At the conclusion of each billing/school month:
    ```
 3. Export verified ledger report as PDF/CSV.
 4. Obtain co-signatures from `OWNER_TREASURER` and Advisory Board.
+

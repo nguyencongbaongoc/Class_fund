@@ -15,3 +15,4 @@ with conn.cursor() as cur:
     cur.execute("SET GTID_NEXT = 'AUTOMATIC';")
 conn.close()
 print("GTID sync completed on 3306.")
+

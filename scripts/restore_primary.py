@@ -59,3 +59,4 @@ with conn.cursor() as cur:
     tables = [r[0] for r in cur.fetchall()]
     print(f"3306 tables count: {len(tables)}")
 conn.close()
+

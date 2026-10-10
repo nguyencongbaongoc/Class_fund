@@ -157,3 +157,4 @@ To recover to a precise microsecond before an errant operator action (e.g. corru
 - **Database Administrator On-Call:** `dba-oncall@classfund.local`
 - **Lead Solutions Architect:** `architect@classfund.local`
 - **Internal Severity 1 Emergency Bridge:** Slack `#incident-war-room`
+
